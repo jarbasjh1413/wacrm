@@ -361,7 +361,7 @@ export function ContactDetailView({
       toast.success(t('toastTemplateSent', { name: template.name }));
     } catch (err) {
       const reason = err instanceof Error ? err.message : 'network error';
-      toast.error(`Failed to send template: ${reason}`);
+      toast.error(t('toastTemplateFailed', { reason }));
     } finally {
       setSendingTemplate(false);
     }
@@ -463,7 +463,7 @@ export function ContactDetailView({
                   value="tags"
                   className="data-active:bg-muted data-active:text-primary text-muted-foreground"
                 >
-                  {t('tabs.tags', { fallback: 'Tags' })}
+                  {t('tabs.tags')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="notes"
