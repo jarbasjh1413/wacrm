@@ -151,7 +151,7 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
  * if we ever switch the asset, both spots update together.
  */
 const DOODLE_BG_CLASSES =
-  "bg-background bg-[url('/inbox-doodle.svg')] bg-repeat";
+  "bg-wa-chat bg-[url('/inbox-doodle.svg')] bg-repeat";
 
 export function MessageThread({
   conversation,
@@ -1080,8 +1080,8 @@ export function MessageThread({
                     {formatDateSeparator(group.date, t)}
                   </span>
                 </div>
-                {/* Messages */}
-                <div className="space-y-2">
+                {/* Messages — WhatsApp-tight vertical rhythm */}
+                <div className="space-y-1">
                   {group.messages.map((msg) => {
                     const parent = msg.reply_to_message_id
                       ? messagesById.get(msg.reply_to_message_id)

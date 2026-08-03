@@ -30,6 +30,13 @@ import {
   type MediaKind,
 } from '@/lib/whatsapp/meta-api';
 import {
+  sendTextMessage as evoSendText,
+  sendMediaMessage as evoSendMedia,
+  sendInteractiveButtons as evoSendButtons,
+  sendInteractiveList as evoSendList,
+  type EvolutionConn,
+} from '@/lib/whatsapp/evolution-api';
+import {
   validateInteractivePayload,
   interactivePayloadPreviewText,
   type InteractiveMessagePayload,
@@ -41,6 +48,7 @@ import {
   isValidE164,
   phoneVariants,
   isRecipientNotAllowedError,
+  isNumberNotOnWhatsAppError,
 } from '@/lib/whatsapp/phone-utils';
 import type { MessageTemplate } from '@/types';
 import { isMessageTemplate } from '@/lib/whatsapp/template-row-guard';
@@ -247,37 +255,92 @@ export async function sendMessageToConversation(
     );
   }
 
-  // WhatsApp config, account-scoped.
-  const { data: config, error: configError } = await db
+  // WhatsApp config, account-scoped. Post-037 an account can own
+  // several rows (one per number/instance). Preference order:
+  //   1. the instance this conversation is pinned to,
+  //   2. the account's default number,
+  //   3. the first row (legacy single-number accounts).
+  const { data: configs, error: configError } = await db
     .from('whatsapp_config')
     .select('*')
     .eq('account_id', accountId)
-    .single();
+    .order('created_at', { ascending: true });
 
-  if (configError || !config) {
+  if (configError || !configs || configs.length === 0) {
     throw new SendMessageError(
       'whatsapp_not_configured',
       'WhatsApp not configured. Please set up your WhatsApp integration first.',
       400
     );
   }
+  const config =
+    configs.find(
+      (c: { id: string }) => c.id === conversation.whatsapp_config_id
+    ) ??
+    configs.find((c: { is_default?: boolean }) => c.is_default) ??
+    configs[0];
 
-  const accessToken = decrypt(config.access_token);
+  const isEvolution = config.engine === 'evolution';
 
-  // Self-heal legacy CBC ciphertexts. Fire-and-forget; idempotent.
-  if (isLegacyFormat(config.access_token)) {
-    void db
-      .from('whatsapp_config')
-      .update({ access_token: encrypt(accessToken) })
-      .eq('id', config.id)
-      .then(({ error }: { error: { message: string } | null }) => {
-        if (error) {
-          console.warn(
-            '[send-message] access_token GCM upgrade failed:',
-            error.message
-          );
-        }
-      });
+  // Templates are a Meta Cloud API concept — free-form messages replace
+  // them on the Evolution engine (CLAUDE.md §6.5).
+  if (isEvolution && messageType === 'template') {
+    throw new SendMessageError(
+      'template_unsupported',
+      'Template messages are not supported on this WhatsApp number. Send a regular message instead.',
+      400
+    );
+  }
+
+  // Engine credentials.
+  let accessToken = '';
+  let evolutionConn: EvolutionConn | null = null;
+  if (isEvolution) {
+    const baseUrl =
+      config.evolution_base_url || process.env.EVOLUTION_BASE_URL;
+    if (!baseUrl || !config.evolution_instance_name) {
+      throw new SendMessageError(
+        'whatsapp_not_configured',
+        'This WhatsApp number is missing its Evolution connection details.',
+        400
+      );
+    }
+    let apikey = '';
+    try {
+      apikey = decrypt(config.evolution_apikey);
+    } catch {
+      apikey = process.env.EVOLUTION_GLOBAL_APIKEY ?? '';
+    }
+    if (!apikey) {
+      throw new SendMessageError(
+        'whatsapp_not_configured',
+        'This WhatsApp number has no usable Evolution apikey.',
+        400
+      );
+    }
+    evolutionConn = {
+      baseUrl,
+      instanceName: config.evolution_instance_name,
+      apikey,
+    };
+  } else {
+    accessToken = decrypt(config.access_token);
+
+    // Self-heal legacy CBC ciphertexts. Fire-and-forget; idempotent.
+    if (isLegacyFormat(config.access_token)) {
+      void db
+        .from('whatsapp_config')
+        .update({ access_token: encrypt(accessToken) })
+        .eq('id', config.id)
+        .then(({ error }: { error: { message: string } | null }) => {
+          if (error) {
+            console.warn(
+              '[send-message] access_token GCM upgrade failed:',
+              error.message
+            );
+          }
+        });
+    }
   }
 
   // Resolve the reply target to its Meta message_id. The parent must
@@ -330,6 +393,53 @@ export async function sendMessageToConversation(
   }
 
   const attempt = async (phone: string): Promise<string> => {
+    // Evolution engine: same dispatch shape, different transport.
+    if (evolutionConn) {
+      if (isMediaKind) {
+        const result = await evoSendMedia({
+          ...evolutionConn,
+          to: phone,
+          kind: messageType as MediaKind,
+          link: mediaUrl!,
+          caption: contentText || undefined,
+          filename: filename || undefined,
+          contextMessageId,
+        });
+        return result.messageId;
+      }
+      if (messageType === 'interactive') {
+        const p = interactivePayload!;
+        if (p.kind === 'buttons') {
+          const result = await evoSendButtons({
+            ...evolutionConn,
+            to: phone,
+            bodyText: p.body,
+            headerText: p.header || undefined,
+            footerText: p.footer || undefined,
+            buttons: p.buttons,
+          });
+          return result.messageId;
+        }
+        const result = await evoSendList({
+          ...evolutionConn,
+          to: phone,
+          bodyText: p.body,
+          buttonLabel: p.button_label,
+          headerText: p.header || undefined,
+          footerText: p.footer || undefined,
+          sections: p.sections,
+        });
+        return result.messageId;
+      }
+      const result = await evoSendText({
+        ...evolutionConn,
+        to: phone,
+        text: contentText!,
+        contextMessageId,
+      });
+      return result.messageId;
+    }
+
     if (messageType === 'template') {
       const result = await sendTemplateMessage({
         phoneNumberId: config.phone_number_id,
@@ -412,22 +522,32 @@ export async function sendMessageToConversation(
         break;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        if (!isRecipientNotAllowedError(message)) {
+        // Engine-specific "this exact number doesn't work, but a
+        // variant might" signals. Meta: sandbox allow-list (#131030).
+        // Evolution: number has no WhatsApp account — the common cause
+        // in Brazil is the ninth-digit mismatch, and phoneVariants
+        // yields the counterpart form right after the original.
+        const variantRetryable = isEvolution
+          ? isNumberNotOnWhatsAppError(message)
+          : isRecipientNotAllowedError(message);
+        if (!variantRetryable) {
           throw err;
         }
         lastError = err;
         console.warn(
-          `[send-message] variant "${variant}" rejected by Meta, trying next…`
+          `[send-message] variant "${variant}" rejected, trying next…`
         );
       }
     }
 
     if (lastError) throw lastError;
   } catch (err) {
+    const engineLabel = isEvolution ? 'Evolution API' : 'Meta API';
     const message =
-      err instanceof Error ? err.message : 'Unknown Meta API error';
-    console.error('[send-message] Meta send failed for all variants:', message);
-    throw new SendMessageError('meta_error', `Meta API error: ${message}`, 502);
+      err instanceof Error ? err.message : `Unknown ${engineLabel} error`;
+    console.error(`[send-message] ${engineLabel} send failed:`, message);
+    // Error code stays 'meta_error' for API/UI compatibility.
+    throw new SendMessageError('meta_error', `${engineLabel} error: ${message}`, 502);
   }
 
   if (workingPhone !== sanitizedPhone) {
@@ -438,6 +558,15 @@ export async function sendMessageToConversation(
       .from('contacts')
       .update({ phone: workingPhone })
       .eq('id', contact.id);
+  }
+
+  // Pin the conversation to the instance that just sent successfully,
+  // so future replies keep leaving from the same number (migration 037).
+  if (!conversation.whatsapp_config_id) {
+    await db
+      .from('conversations')
+      .update({ whatsapp_config_id: config.id })
+      .eq('id', conversationId);
   }
 
   // Persist the sent message. Field names MUST match the messages

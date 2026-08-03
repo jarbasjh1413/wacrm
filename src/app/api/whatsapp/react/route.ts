@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { sendReactionMessage } from '@/lib/whatsapp/meta-api';
-import { decrypt } from '@/lib/whatsapp/encryption';
+import {
+  loadSendConfig,
+  transportSend,
+} from '@/lib/whatsapp/engine-transport';
 import { sanitizePhoneForMeta } from '@/lib/whatsapp/phone-utils';
 import {
   checkRateLimit,
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
     // Resolve target message + its conversation; verify ownership.
     const { data: targetMessage, error: msgError } = await supabase
       .from('messages')
-      .select('id, message_id, conversation_id')
+      .select('id, message_id, conversation_id, sender_type')
       .eq('id', message_id)
       .maybeSingle();
 
@@ -108,37 +110,31 @@ export async function POST(request: Request) {
       );
     }
 
-    // WhatsApp config + access token. Account-scoped post-multi-user.
-    const { data: config, error: configError } = await supabase
-      .from('whatsapp_config')
-      .select('phone_number_id, access_token')
-      .eq('account_id', accountId)
-      .single();
-
-    if (configError || !config) {
-      return NextResponse.json(
-        { error: 'WhatsApp not configured.' },
-        { status: 400 },
-      );
-    }
-
-    const accessToken = decrypt(config.access_token);
     const sanitizedPhone = sanitizePhoneForMeta(contact.phone);
 
     try {
-      await sendReactionMessage({
-        phoneNumberId: config.phone_number_id,
-        accessToken,
-        to: sanitizedPhone,
+      // Engine-agnostic: routes Meta vs Evolution based on the config
+      // row the conversation uses (pinned → default → first).
+      const config = await loadSendConfig(
+        supabase,
+        accountId,
+        targetMessage.conversation_id,
+      );
+      await transportSend(config, sanitizedPhone, {
+        type: 'reaction',
         targetMessageId: targetMessage.message_id,
+        // Evolution needs to know whether the target message was ours.
+        targetFromMe:
+          targetMessage.sender_type === 'agent' ||
+          targetMessage.sender_type === 'bot',
         emoji,
       });
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Unknown Meta API error';
-      console.error('[whatsapp/react] Meta send failed:', message);
+        err instanceof Error ? err.message : 'Unknown WhatsApp API error';
+      console.error('[whatsapp/react] send failed:', message);
       return NextResponse.json(
-        { error: `Meta API error: ${message}` },
+        { error: `WhatsApp API error: ${message}` },
         { status: 502 },
       );
     }

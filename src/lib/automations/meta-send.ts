@@ -1,15 +1,17 @@
-import { sendTextMessage, sendTemplateMessage } from '@/lib/whatsapp/meta-api'
 import type { InteractiveMessagePayload } from '@/lib/whatsapp/interactive'
 import {
   engineSendInteractiveButtons,
   engineSendInteractiveList,
 } from '@/lib/flows/meta-send'
-import { decrypt } from '@/lib/whatsapp/encryption'
+import {
+  loadSendConfig,
+  transportSend,
+  isVariantRetryableError,
+} from '@/lib/whatsapp/engine-transport'
 import {
   sanitizePhoneForMeta,
   isValidE164,
   phoneVariants,
-  isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils'
 import { supabaseAdmin } from './admin-client'
 
@@ -131,41 +133,27 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
     throw new Error(`contact phone invalid: ${contact.phone}`)
   }
 
-  const { data: config, error: configErr } = await db
-    .from('whatsapp_config')
-    .select('*')
-    .eq('account_id', input.accountId)
-    .single()
-  if (configErr || !config) {
-    throw new Error('WhatsApp not configured for this account')
-  }
+  // Engine-agnostic: picks the conversation-pinned / default / first
+  // config row and routes Meta vs Evolution inside transportSend.
+  const config = await loadSendConfig(db, input.accountId, input.conversationId)
 
-  const accessToken = decrypt(config.access_token)
+  const attempt = (phone: string): Promise<string> =>
+    transportSend(
+      config,
+      phone,
+      input.kind === 'template'
+        ? {
+            type: 'template',
+            templateName: input.templateName,
+            language: input.language,
+            params: input.params,
+          }
+        : { type: 'text', text: input.text }
+    )
 
-  const attempt = async (phone: string): Promise<string> => {
-    if (input.kind === 'template') {
-      const r = await sendTemplateMessage({
-        phoneNumberId: config.phone_number_id,
-        accessToken,
-        to: phone,
-        templateName: input.templateName,
-        language: input.language,
-        params: input.params,
-      })
-      return r.messageId
-    }
-    const r = await sendTextMessage({
-      phoneNumberId: config.phone_number_id,
-      accessToken,
-      to: phone,
-      text: input.text,
-    })
-    return r.messageId
-  }
-
-  // Same phone-variant retry as /api/whatsapp/send — Meta sandbox and
-  // numbers registered with/without a trunk 0 both require this to
-  // reliably land a message.
+  // Same phone-variant retry as /api/whatsapp/send; the retryable
+  // signal is engine-specific (Meta sandbox vs Evolution "number not
+  // on WhatsApp" — the Brazilian ninth-digit case).
   const variants = phoneVariants(sanitized)
   let workingPhone = sanitized
   let waMessageId = ''
@@ -178,7 +166,7 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
       break
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!isRecipientNotAllowedError(msg)) throw err
+      if (!isVariantRetryableError(config, msg)) throw err
       lastError = err
     }
   }

@@ -185,18 +185,8 @@ export function SettingsOverview({
                 : ''
             }`,
     },
-    {
-      section: 'templates',
-      loading: countsLoading,
-      subtitle:
-        counts?.templates == null
-          ? t('manageTemplates')
-          : `${t('templatesCount', { count: counts.templates })}${
-              counts.templatesPending
-                ? ` · ${t('pendingReview', { count: counts.templatesPending })}`
-                : ''
-            }`,
-    },
+    // Meta-era templates card retired with the Evolution engine —
+    // free-form messages need no template approval.
     {
       section: 'deals',
       loading: false,

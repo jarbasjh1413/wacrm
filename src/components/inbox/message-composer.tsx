@@ -622,7 +622,7 @@ export function MessageComposer({
           <Button
             size="sm"
             onClick={stopRecording}
-            className="h-9 w-9 shrink-0 bg-primary p-0 hover:bg-primary/90"
+            className="h-9 w-9 shrink-0 rounded-full bg-wa-unread p-0 text-wa-unread-foreground hover:bg-wa-unread/90"
             title={t("stopAndAttach")}
           >
             <Square className="h-4 w-4" />
@@ -756,7 +756,7 @@ export function MessageComposer({
             gateReason="send messages"
             disabled={!text.trim() || sessionExpired || sending}
             onClick={handleSend}
-            className="h-9 w-9 shrink-0 bg-primary p-0 hover:bg-primary/90 disabled:opacity-40"
+            className="h-9 w-9 shrink-0 rounded-full bg-wa-unread p-0 text-wa-unread-foreground hover:bg-wa-unread/90 disabled:opacity-40"
           >
             <Send className="h-4 w-4" />
           </GatedButton>
@@ -886,7 +886,7 @@ function MediaDraftPreview({
               }
             }}
             placeholder={t("addCaption")}
-            className="flex-1 rounded-xl border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-primary/50"
+            className="flex-1 rounded-full border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-wa-unread/60"
           />
         )}
         <GatedButton

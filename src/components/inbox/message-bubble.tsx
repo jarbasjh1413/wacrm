@@ -14,7 +14,13 @@ import {
   ImageOff,
   CornerDownLeft,
   Sparkles,
+  Download,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
 import { MessageReactions } from "./message-reactions";
@@ -39,7 +45,7 @@ function StatusIcon({ status }: { status: Message["status"] }) {
     case "delivered":
       return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
     case "read":
-      return <CheckCheck className="h-3 w-3 text-blue-400" />;
+      return <CheckCheck className="h-3 w-3 text-wa-tick" />;
     case "failed":
       return <XCircle className="h-3 w-3 text-red-400" />;
     default:
@@ -93,6 +99,40 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadImage]);
 
+  // WhatsApp-style lightbox: click the thumbnail to view full-size,
+  // with a download action. Blob URLs (auth-proxied media) download
+  // directly; public Storage URLs are fetched into a blob first so the
+  // browser saves the file instead of navigating to it.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    if (!src) return;
+    setDownloading(true);
+    try {
+      let objectUrl = src;
+      let revoke = false;
+      if (!src.startsWith("blob:")) {
+        const res = await fetch(src);
+        if (!res.ok) throw new Error("download failed");
+        objectUrl = URL.createObjectURL(await res.blob());
+        revoke = true;
+      }
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `whatsapp-${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      if (revoke) URL.revokeObjectURL(objectUrl);
+    } catch {
+      // Fallback: open in a new tab so the user can save manually.
+      window.open(src, "_blank", "noopener,noreferrer");
+    } finally {
+      setDownloading(false);
+    }
+  }, [src]);
+
   if (error) {
     return (
       <div className="flex h-40 w-60 items-center justify-center rounded-lg bg-muted">
@@ -110,12 +150,48 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
   }
 
   return (
-    <img
-      src={src ?? ""}
-      alt={alt}
-      className="max-h-64 max-w-60 rounded-lg object-cover"
-      onError={() => setError(true)}
-    />
+    <>
+      <button
+        type="button"
+        onClick={() => setLightboxOpen(true)}
+        className="block cursor-zoom-in rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={alt}
+      >
+        <img
+          src={src ?? ""}
+          alt={alt}
+          className="max-h-80 max-w-72 rounded-lg object-cover"
+          onError={() => setError(true)}
+        />
+      </button>
+
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-[92vw] border-none bg-transparent p-0 shadow-none sm:max-w-3xl">
+          <DialogTitle className="sr-only">{alt}</DialogTitle>
+          <div className="relative flex items-center justify-center">
+            <img
+              src={src ?? ""}
+              alt={alt}
+              className="max-h-[82vh] w-auto max-w-full rounded-lg object-contain"
+            />
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-60"
+              title="Download"
+              aria-label="Download"
+            >
+              {downloading ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -281,10 +357,10 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative rounded-2xl px-3 py-2",
+          "relative rounded-lg px-3 py-2 shadow-sm",
           isAgent
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-muted text-foreground",
+            ? "wa-tail-out rounded-tr-none bg-wa-out text-wa-out-foreground"
+            : "wa-tail-in rounded-tl-none bg-wa-in text-wa-in-foreground",
         )}
       >
         {reply && (
@@ -307,7 +383,7 @@ export function MessageBubble({
               glance. */}
           {message.ai_generated && (
             <span
-              className="inline-flex items-center gap-0.5 rounded-full bg-primary-foreground/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-primary-foreground"
+              className="inline-flex items-center gap-0.5 rounded-full bg-black/15 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-wa-out-foreground"
               title={t("aiBadgeTitle")}
             >
               <Sparkles className="h-2.5 w-2.5" />
@@ -317,11 +393,9 @@ export function MessageBubble({
           <span
             className={cn(
               "text-[10px]",
-              // Outbound bubbles sit on the primary fill, so the
-              // timestamp must read against that (not the neutral
-              // foreground) — otherwise it goes low-contrast in light
-              // mode. Inbound bubbles use the muted surface.
-              isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+              // Timestamp reads against the WhatsApp bubble colours
+              // (green outbound / neutral inbound) in both modes.
+              isAgent ? "text-wa-out-foreground/60" : "text-wa-in-foreground/50",
             )}
           >
             {time}

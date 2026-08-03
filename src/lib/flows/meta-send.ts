@@ -1,19 +1,18 @@
-import {
-  sendInteractiveButtons,
-  sendInteractiveList,
-  sendMediaMessage,
-  sendTextMessage,
-  type InteractiveButton,
-  type InteractiveListSection,
-  type MediaKind,
+import type {
+  InteractiveButton,
+  InteractiveListSection,
+  MediaKind,
 } from '@/lib/whatsapp/meta-api'
 import type { InteractiveMessagePayload } from '@/lib/whatsapp/interactive'
-import { decrypt } from '@/lib/whatsapp/encryption'
+import {
+  loadSendConfig,
+  transportSend,
+  isVariantRetryableError,
+} from '@/lib/whatsapp/engine-transport'
 import {
   sanitizePhoneForMeta,
   isValidE164,
   phoneVariants,
-  isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils'
 import { supabaseAdmin } from './admin-client'
 
@@ -82,26 +81,10 @@ export async function engineSendText(
     throw new Error(`contact phone invalid: ${contact.phone}`)
   }
 
-  const { data: config, error: configErr } = await db
-    .from('whatsapp_config')
-    .select('*')
-    .eq('account_id', args.accountId)
-    .single()
-  if (configErr || !config) {
-    throw new Error('WhatsApp not configured for this account')
-  }
+  const config = await loadSendConfig(db, args.accountId, args.conversationId)
 
-  const accessToken = decrypt(config.access_token)
-
-  const attempt = async (phone: string): Promise<string> => {
-    const r = await sendTextMessage({
-      phoneNumberId: config.phone_number_id,
-      accessToken,
-      to: phone,
-      text: args.text,
-    })
-    return r.messageId
-  }
+  const attempt = (phone: string): Promise<string> =>
+    transportSend(config, phone, { type: 'text', text: args.text })
 
   const variants = phoneVariants(sanitized)
   let workingPhone = sanitized
@@ -115,7 +98,7 @@ export async function engineSendText(
       break
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!isRecipientNotAllowedError(msg)) throw err
+      if (!isVariantRetryableError(config, msg)) throw err
       lastError = err
     }
   }
@@ -192,29 +175,16 @@ export async function engineSendMedia(
     throw new Error(`contact phone invalid: ${contact.phone}`)
   }
 
-  const { data: config, error: configErr } = await db
-    .from('whatsapp_config')
-    .select('*')
-    .eq('account_id', args.accountId)
-    .single()
-  if (configErr || !config) {
-    throw new Error('WhatsApp not configured for this account')
-  }
+  const config = await loadSendConfig(db, args.accountId, args.conversationId)
 
-  const accessToken = decrypt(config.access_token)
-
-  const attempt = async (phone: string): Promise<string> => {
-    const r = await sendMediaMessage({
-      phoneNumberId: config.phone_number_id,
-      accessToken,
-      to: phone,
+  const attempt = (phone: string): Promise<string> =>
+    transportSend(config, phone, {
+      type: 'media',
       kind: args.kind,
       link: args.link,
       caption: args.caption,
       filename: args.filename,
     })
-    return r.messageId
-  }
 
   const variants = phoneVariants(sanitized)
   let workingPhone = sanitized
@@ -228,7 +198,7 @@ export async function engineSendMedia(
       break
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!isRecipientNotAllowedError(msg)) throw err
+      if (!isVariantRetryableError(config, msg)) throw err
       lastError = err
     }
   }
@@ -344,46 +314,32 @@ async function sendInteractiveViaMeta(
     throw new Error(`contact phone invalid: ${contact.phone}`)
   }
 
-  const { data: config, error: configErr } = await db
-    .from('whatsapp_config')
-    .select('*')
-    .eq('account_id', input.accountId)
-    .single()
-  if (configErr || !config) {
-    throw new Error('WhatsApp not configured for this account')
-  }
+  const config = await loadSendConfig(db, input.accountId, input.conversationId)
 
-  const accessToken = decrypt(config.access_token)
+  const attempt = (phone: string): Promise<string> =>
+    transportSend(
+      config,
+      phone,
+      input.kind === 'buttons'
+        ? {
+            type: 'buttons',
+            bodyText: input.bodyText,
+            buttons: input.buttons,
+            headerText: input.headerText,
+            footerText: input.footerText,
+          }
+        : {
+            type: 'list',
+            bodyText: input.bodyText,
+            buttonLabel: input.buttonLabel,
+            sections: input.sections,
+            headerText: input.headerText,
+            footerText: input.footerText,
+          }
+    )
 
-  const attempt = async (phone: string): Promise<string> => {
-    if (input.kind === 'buttons') {
-      const r = await sendInteractiveButtons({
-        phoneNumberId: config.phone_number_id,
-        accessToken,
-        to: phone,
-        bodyText: input.bodyText,
-        buttons: input.buttons,
-        headerText: input.headerText,
-        footerText: input.footerText,
-      })
-      return r.messageId
-    }
-    const r = await sendInteractiveList({
-      phoneNumberId: config.phone_number_id,
-      accessToken,
-      to: phone,
-      bodyText: input.bodyText,
-      buttonLabel: input.buttonLabel,
-      sections: input.sections,
-      headerText: input.headerText,
-      footerText: input.footerText,
-    })
-    return r.messageId
-  }
-
-  // Same phone-variant retry as automations/meta-send.ts. Numbers
-  // registered with/without a trunk 0 + Meta's sandbox quirks all
-  // need this to reliably land a message.
+  // Same phone-variant retry as automations/meta-send.ts; the
+  // retryable signal is engine-specific (see engine-transport).
   const variants = phoneVariants(sanitized)
   let workingPhone = sanitized
   let waMessageId = ''
@@ -396,7 +352,7 @@ async function sendInteractiveViaMeta(
       break
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (!isRecipientNotAllowedError(msg)) throw err
+      if (!isVariantRetryableError(config, msg)) throw err
       lastError = err
     }
   }

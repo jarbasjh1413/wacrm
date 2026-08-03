@@ -41,6 +41,37 @@ export function isValidE164(phone: string): boolean {
 }
 
 /**
+ * Brazilian ninth-digit variant (CLAUDE.md §6.6).
+ *
+ * Brazilian mobiles migrated from 8 to 9 subscriber digits by
+ * prefixing a "9": +55 DD 9XXXX-XXXX. Old address books (and some
+ * WhatsApp JIDs!) still carry the 8-digit form, so the same person can
+ * exist both ways. In international digits-only form:
+ *   55 + DDD(2) + 9 + 8 digits (13 total) → current mobile
+ *   55 + DDD(2) + 8 digits (12 total)     → legacy mobile or landline
+ *
+ * Returns the counterpart form, or null when the number isn't a
+ * Brazilian mobile (landlines start 2-5 and never gained a 9).
+ */
+export function brazilNinthDigitVariant(sanitized: string): string | null {
+  if (!sanitized.startsWith('55')) return null
+  // 13 digits with the '9' prefix and a mobile-range digit after it →
+  // drop the 9.
+  if (
+    sanitized.length === 13 &&
+    sanitized[4] === '9' &&
+    /[6-9]/.test(sanitized[5])
+  ) {
+    return sanitized.slice(0, 4) + sanitized.slice(5)
+  }
+  // 12 digits starting in the mobile range → insert the 9.
+  if (sanitized.length === 12 && /[6-9]/.test(sanitized[4])) {
+    return sanitized.slice(0, 4) + '9' + sanitized.slice(4)
+  }
+  return null
+}
+
+/**
  * Generate plausible phone number variants for retry when Meta's
  * sandbox rejects a number with error #131030 ("not in allowed list").
  *
@@ -70,6 +101,11 @@ export function phoneVariants(sanitized: string): string[] {
 
   // 1. Original
   push(sanitized)
+
+  // 1b. Brazilian ninth-digit counterpart (highest-value retry for a
+  // Brazilian deployment, so it goes right after the original).
+  const brVariant = brazilNinthDigitVariant(sanitized)
+  if (brVariant) push(brVariant)
 
   // 2. Insert a 0 after each plausible country-code length
   for (const ccLen of [1, 2, 3]) {
@@ -101,4 +137,17 @@ export function phoneVariants(sanitized: string): string[] {
  */
 export function isRecipientNotAllowedError(message: string): boolean {
   return /131030|not in allowed list|not in the allowed list/i.test(message)
+}
+
+/**
+ * Returns true when an Evolution API send error indicates the target
+ * number has no WhatsApp account — the signal to retry with another
+ * phone variant (e.g. the Brazilian ninth-digit counterpart).
+ * Evolution/Baileys phrase this a few ways across versions, e.g.
+ * '"exists": false', "number does not exist on WhatsApp".
+ */
+export function isNumberNotOnWhatsAppError(message: string): boolean {
+  return /exists["']?\s*:\s*false|not\s+(?:a\s+)?(?:valid\s+)?whatsapp|(?:number|jid).*(?:does\s*n[o']t|not)\s+exist|no\s+account\s+on\s+whatsapp/i.test(
+    message
+  )
 }

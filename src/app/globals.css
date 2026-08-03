@@ -145,6 +145,71 @@ html[data-mode="light"] {
   --sidebar-border: oklch(0.922 0.004 260);
 }
 
+/* ---- WhatsApp-web look for the inbox chat (Jarbas' request) ----
+ * Colours lifted from WhatsApp Web's palette so the inbox reads
+ * instantly familiar: green outbound bubbles, neutral inbound,
+ * beige (light) / near-black (dark) chat canvas, green unread
+ * badges and the blue read ticks. Scoped to wa-* tokens so the
+ * rest of the app keeps the product theme. */
+
+:root,
+html[data-mode="dark"] {
+  --wa-chat-bg: #0b141a;
+  --wa-in: #202c33;
+  --wa-in-foreground: #e9edef;
+  --wa-out: #005c4b;
+  --wa-out-foreground: #e9edef;
+  --wa-tick: #53bdeb;
+  --wa-unread: #00a884;
+  --wa-unread-foreground: #111b21;
+}
+
+html[data-mode="light"] {
+  --wa-chat-bg: #efeae2;
+  --wa-in: #ffffff;
+  --wa-in-foreground: #111b21;
+  --wa-out: #d9fdd3;
+  --wa-out-foreground: #111b21;
+  --wa-tick: #53bdeb;
+  --wa-unread: #25d366;
+  --wa-unread-foreground: #ffffff;
+}
+
+@theme inline {
+  --color-wa-chat: var(--wa-chat-bg);
+  --color-wa-in: var(--wa-in);
+  --color-wa-in-foreground: var(--wa-in-foreground);
+  --color-wa-out: var(--wa-out);
+  --color-wa-out-foreground: var(--wa-out-foreground);
+  --color-wa-tick: var(--wa-tick);
+  --color-wa-unread: var(--wa-unread);
+  --color-wa-unread-foreground: var(--wa-unread-foreground);
+}
+
+/* WhatsApp-style bubble tails: a small triangle hanging off the top
+ * outer corner. The bubble div is `relative`; the tail inherits the
+ * bubble colour from the wa-* vars. */
+.wa-tail-in::before,
+.wa-tail-out::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-top-width: 10px;
+  border-top-style: solid;
+}
+.wa-tail-in::before {
+  left: -7px;
+  border-top-color: var(--wa-in);
+  border-left: 8px solid transparent;
+}
+.wa-tail-out::before {
+  right: -7px;
+  border-top-color: var(--wa-out);
+  border-right: 8px solid transparent;
+}
+
 /* ---- ACCENT: primary color ---- */
 
 :root,

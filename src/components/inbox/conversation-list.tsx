@@ -275,7 +275,7 @@ export function ConversationList({
               >
                 {t("tags")}
                 {selectedTagIds.length > 0 && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-wa-unread px-1 text-[10px] font-bold text-wa-unread-foreground">
                     {selectedTagIds.length}
                   </span>
                 )}
@@ -485,7 +485,7 @@ function ConversationItem({
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
             {conversation.unread_count > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-wa-unread px-1 text-[10px] font-bold text-wa-unread-foreground">
                 {conversation.unread_count}
               </span>
             )}

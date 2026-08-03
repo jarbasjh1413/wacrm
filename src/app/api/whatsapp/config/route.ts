@@ -89,6 +89,10 @@ export async function GET() {
       .from('whatsapp_config')
       .select('phone_number_id, access_token, status')
       .eq('account_id', accountId)
+      // Post-037 whatsapp_config holds one row per number and Evolution
+      // rows have no Meta credentials — this legacy Meta diagnostic
+      // must only ever look at the (at most one) Meta row.
+      .eq('engine', 'meta')
       .maybeSingle()
 
     if (configError) {

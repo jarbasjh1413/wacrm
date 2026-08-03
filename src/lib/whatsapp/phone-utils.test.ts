@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  brazilNinthDigitVariant,
+  isNumberNotOnWhatsAppError,
   isRecipientNotAllowedError,
   isValidE164,
   normalizePhone,
@@ -133,6 +135,76 @@ describe("phoneVariants", () => {
   it("returns just the original when the number is too short for any CC slice", () => {
     // 1-char input is shorter than all ccLen values; both loops skip.
     expect(phoneVariants("1")).toEqual(["1"]);
+  });
+});
+
+describe("brazilNinthDigitVariant", () => {
+  it("adds the 9 to a legacy 12-digit Brazilian mobile", () => {
+    // 55 + DDD 51 + 82306274 (starts 8 → mobile range)
+    expect(brazilNinthDigitVariant("555182306274")).toBe("5551982306274");
+  });
+
+  it("drops the 9 from a 13-digit Brazilian mobile", () => {
+    expect(brazilNinthDigitVariant("5551982306274")).toBe("555182306274");
+  });
+
+  it("leaves landlines alone (subscriber starts 2-5, never gained a 9)", () => {
+    // 55 + DDD 51 + 3234-5678 → landline
+    expect(brazilNinthDigitVariant("555132345678")).toBeNull();
+  });
+
+  it("ignores non-Brazilian numbers", () => {
+    expect(brazilNinthDigitVariant("37063949836")).toBeNull();
+    expect(brazilNinthDigitVariant("14155551212")).toBeNull();
+  });
+
+  it("ignores Brazilian numbers with unexpected lengths", () => {
+    expect(brazilNinthDigitVariant("5551")).toBeNull();
+    expect(brazilNinthDigitVariant("55519823062741")).toBeNull();
+  });
+
+  it("does not drop a 9 when the following digit is outside the mobile range", () => {
+    // 55 + DDD 51 + 9 + 2345-678 — '2' after the 9 means this isn't a
+    // 9-prefixed mobile; dropping would corrupt the number.
+    expect(brazilNinthDigitVariant("5551923456789")).toBeNull();
+  });
+});
+
+describe("phoneVariants (Brazilian ninth digit)", () => {
+  it("lists the ninth-digit counterpart immediately after the original", () => {
+    const out = phoneVariants("555182306274");
+    expect(out[0]).toBe("555182306274");
+    expect(out[1]).toBe("5551982306274");
+  });
+
+  it("round-trips the 13-digit form to the 12-digit form", () => {
+    const out = phoneVariants("5551982306274");
+    expect(out[0]).toBe("5551982306274");
+    expect(out[1]).toBe("555182306274");
+  });
+});
+
+describe("phonesMatch (Brazilian ninth digit)", () => {
+  it("treats with-9 and without-9 forms as the same person", () => {
+    expect(phonesMatch("5551982306274", "555182306274")).toBe(true);
+  });
+});
+
+describe("isNumberNotOnWhatsAppError", () => {
+  it("matches Evolution's exists:false payloads", () => {
+    expect(isNumberNotOnWhatsAppError('[{"exists": false, "jid": "..."}]')).toBe(true);
+    expect(isNumberNotOnWhatsAppError("exists:false")).toBe(true);
+  });
+
+  it("matches human-readable variants", () => {
+    expect(isNumberNotOnWhatsAppError("The number does not exist")).toBe(true);
+    expect(isNumberNotOnWhatsAppError("jid not exist on WhatsApp")).toBe(true);
+  });
+
+  it("does not false-positive on unrelated errors", () => {
+    expect(isNumberNotOnWhatsAppError("Unauthorized")).toBe(false);
+    expect(isNumberNotOnWhatsAppError("Connection Closed")).toBe(false);
+    expect(isNumberNotOnWhatsAppError("")).toBe(false);
   });
 });
 
