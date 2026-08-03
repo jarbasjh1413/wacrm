@@ -181,6 +181,11 @@ export interface Conversation {
   ai_autoreply_disabled?: boolean;
   ai_reply_count?: number;
   ai_handoff_summary?: string | null;
+  /**
+   * Instance this thread is pinned to (migration 037, multi-number).
+   * Null until the first outbound send picks an instance.
+   */
+  whatsapp_config_id?: string | null;
 }
 
 // ============================================================

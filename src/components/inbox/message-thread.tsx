@@ -227,8 +227,47 @@ export function MessageThread({
     };
   }, []);
 
-  // 24-hour session timer
+  // Engine of the instance this conversation sends through — pinned →
+  // default → first, mirroring the send path (send-message.ts). The
+  // 24-hour customer-service window is a Meta Cloud API rule; the
+  // Evolution engine has no such limit, so the timer/lock only applies
+  // when the sending instance is 'meta'.
+  const [sendEngine, setSendEngine] = useState<"meta" | "evolution" | null>(
+    null,
+  );
+  const pinnedConfigId = conversation?.whatsapp_config_id ?? null;
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    supabase
+      .from("whatsapp_config")
+      .select("id, engine, is_default")
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data?.length) {
+          setSendEngine(null);
+          return;
+        }
+        const rows = data as {
+          id: string;
+          engine?: string | null;
+          is_default?: boolean | null;
+        }[];
+        const picked =
+          rows.find((r) => r.id === pinnedConfigId) ??
+          rows.find((r) => r.is_default) ??
+          rows[0];
+        setSendEngine(picked?.engine === "evolution" ? "evolution" : "meta");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pinnedConfigId]);
+
+  // 24-hour session timer (Meta engine only — see sendEngine above)
   const sessionInfo = useMemo(() => {
+    if (sendEngine !== "meta") return { expired: false, remaining: "" };
     if (!messages.length) return { expired: false, remaining: "" };
 
     // Find last customer message
@@ -252,7 +291,7 @@ export function MessageThread({
         : tTimer("xmRemaining", { minutes: Math.floor(hoursLeft * 60) });
 
     return { expired, remaining };
-  }, [messages, tTimer]);
+  }, [messages, tTimer, sendEngine]);
 
   // Store latest callback in a ref so fetchMessages doesn't need to
   // depend on `onMessagesLoaded` — otherwise parent re-renders cause
@@ -902,18 +941,21 @@ export function MessageThread({
             <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
             <p className="truncate text-xs text-muted-foreground">{contact.phone}</p>
           </div>
-          {/* Session timer badge — hidden on the narrowest phones so
-              the name + back arrow keep their room. */}
-          <Badge
-            variant="outline"
-            className={cn(
-              "ml-1 hidden gap-1 border-border text-[10px] sm:inline-flex sm:ml-2",
-              sessionInfo.expired ? "text-red-400" : "text-primary"
-            )}
-          >
-            <Clock className="h-3 w-3" />
-            {sessionInfo.remaining}
-          </Badge>
+          {/* Session timer badge — Meta engine only (Evolution has no
+              24h window, so `remaining` stays empty). Hidden on the
+              narrowest phones so the name + back arrow keep their room. */}
+          {sessionInfo.remaining && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "ml-1 hidden gap-1 border-border text-[10px] sm:inline-flex sm:ml-2",
+                sessionInfo.expired ? "text-red-400" : "text-primary"
+              )}
+            >
+              <Clock className="h-3 w-3" />
+              {sessionInfo.remaining}
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
