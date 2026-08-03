@@ -172,7 +172,9 @@
       "toastSendTemplateFailed": "Failed to send template: {reason}",
       "toastWaitForSend": "Wait for the message to finish sending",
       "toastReactionFailed": "Reaction failed: {reason}",
-      "toastAssignmentFailed": "Failed to update assignment"
+      "toastAssignmentFailed": "Failed to update assignment",
+      "callWhatsApp": "Call on WhatsApp (opens the official app)",
+      "callPhone": "Call this number"
     },
     "sessionTimer": {
       "expired": "Expired",

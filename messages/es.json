@@ -172,7 +172,9 @@
       "toastSendTemplateFailed": "No se pudo enviar la plantilla: {reason}",
       "toastWaitForSend": "Espera a que el mensaje termine de enviarse",
       "toastReactionFailed": "La reacción falló: {reason}",
-      "toastAssignmentFailed": "No se pudo actualizar la asignación"
+      "toastAssignmentFailed": "No se pudo actualizar la asignación",
+      "callWhatsApp": "Llamar por WhatsApp (abre la aplicación oficial)",
+      "callPhone": "Llamar a este número"
     },
     "sessionTimer": {
       "expired": "Expirada",

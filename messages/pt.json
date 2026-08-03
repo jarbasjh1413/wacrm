@@ -172,7 +172,9 @@
       "toastSendTemplateFailed": "Falha ao enviar modelo: {reason}",
       "toastWaitForSend": "Aguarde a mensagem terminar de enviar",
       "toastReactionFailed": "Falha na reação: {reason}",
-      "toastAssignmentFailed": "Falha ao atualizar a atribuição"
+      "toastAssignmentFailed": "Falha ao atualizar a atribuição",
+      "callWhatsApp": "Ligar pelo WhatsApp (abre o aplicativo oficial)",
+      "callPhone": "Ligar para o número"
     },
     "sessionTimer": {
       "expired": "Expirada",
