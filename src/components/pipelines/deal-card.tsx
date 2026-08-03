@@ -3,6 +3,7 @@
 import type { Deal, PipelineStage } from "@/types";
 import { Calendar, Check, X } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { formatMediumDate } from "@/lib/app-locale";
 import { useTranslations } from "next-intl";
 
 interface DealCardProps {
@@ -13,11 +14,7 @@ interface DealCardProps {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatMediumDate(dateStr);
 }
 
 function initials(name?: string, fallback?: string) {

@@ -94,9 +94,9 @@ export function ResponseTimeChart({
             data={chartData}
             index="day"
             categories={[CATEGORY]}
-            // 'violet' maps to Tailwind's `fill-violet-500` — matches
-            // the brand accent the hand-rolled bars used (#7c3aed).
-            colors={['violet']}
+            // 'blue' maps to Tailwind's `fill-blue-500` — closest Tremor
+            // palette entry to the Oficina brand blue (#137cc4).
+            colors={['blue']}
             valueFormatter={(value) => `${value.toFixed(1)}m`}
             showLegend={false}
             yAxisWidth={48}

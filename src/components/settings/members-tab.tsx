@@ -23,6 +23,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { INTL_LOCALE } from '@/lib/app-locale';
 import {
   AlertTriangle,
   Loader2,
@@ -108,7 +109,7 @@ const EDITABLE_ROLES: { value: AccountRole }[] = [
 function fmtDate(iso: string): string {
   // Match the rest of the dashboard's locale-light formatting.
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(INTL_LOCALE, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

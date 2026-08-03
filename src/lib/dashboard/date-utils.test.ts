@@ -105,18 +105,21 @@ describe("lastNDayKeys", () => {
 });
 
 describe("mondayIndex", () => {
+  // Build dates with the local-time constructor: "2026-05-18" strings parse
+  // as UTC midnight, which is still the previous (local) day in UTC-negative
+  // timezones like Brazil — mondayIndex works on local dates, as its callers do.
   it("maps Monday → 0 and Sunday → 6", () => {
-    expect(mondayIndex(new Date("2026-05-18"))).toBe(0); // Mon
-    expect(mondayIndex(new Date("2026-05-19"))).toBe(1); // Tue
-    expect(mondayIndex(new Date("2026-05-23"))).toBe(5); // Sat
-    expect(mondayIndex(new Date("2026-05-24"))).toBe(6); // Sun
+    expect(mondayIndex(new Date(2026, 4, 18))).toBe(0); // Mon
+    expect(mondayIndex(new Date(2026, 4, 19))).toBe(1); // Tue
+    expect(mondayIndex(new Date(2026, 4, 23))).toBe(5); // Sat
+    expect(mondayIndex(new Date(2026, 4, 24))).toBe(6); // Sun
   });
 
   it("aligns with DOW_SHORT_MON_FIRST labels", () => {
-    expect(DOW_SHORT_MON_FIRST[mondayIndex(new Date("2026-05-18"))]).toBe(
+    expect(DOW_SHORT_MON_FIRST[mondayIndex(new Date(2026, 4, 18))]).toBe(
       "Mon",
     );
-    expect(DOW_SHORT_MON_FIRST[mondayIndex(new Date("2026-05-24"))]).toBe(
+    expect(DOW_SHORT_MON_FIRST[mondayIndex(new Date(2026, 4, 24))]).toBe(
       "Sun",
     );
   });

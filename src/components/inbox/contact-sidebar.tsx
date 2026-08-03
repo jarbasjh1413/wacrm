@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
+import { formatMediumDateTime } from "@/lib/app-locale";
 import { useTranslations } from "next-intl";
 
 interface ContactSidebarProps {
@@ -289,7 +289,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
                       {note.note_text}
                     </p>
                     <p className="mt-1 text-[10px] text-muted-foreground">
-                      {format(new Date(note.created_at), "MMM d, yyyy HH:mm")}
+                      {formatMediumDateTime(note.created_at)}
                     </p>
                   </div>
                 ))}

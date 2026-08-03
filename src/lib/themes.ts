@@ -14,6 +14,7 @@
  */
 
 export const THEME_IDS = [
+  "oficina",
   "violet",
   "emerald",
   "cobalt",
@@ -23,7 +24,7 @@ export const THEME_IDS = [
 
 export type ThemeId = (typeof THEME_IDS)[number];
 
-export const DEFAULT_THEME: ThemeId = "violet";
+export const DEFAULT_THEME: ThemeId = "oficina";
 
 export const STORAGE_KEY = "wacrm.theme";
 
@@ -67,6 +68,12 @@ export interface ThemeMeta {
 }
 
 export const THEMES: ReadonlyArray<ThemeMeta> = [
+  {
+    id: "oficina",
+    name: "Oficina",
+    tagline: "Azul da marca Oficina Informática — o padrão.",
+    swatch: "oklch(0.569 0.141 246)",
+  },
   {
     id: "violet",
     name: "Violet",

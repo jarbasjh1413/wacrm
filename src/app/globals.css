@@ -212,7 +212,23 @@ html[data-mode="light"] {
 
 /* ---- ACCENT: primary color ---- */
 
+/* Oficina Informática brand blue — sampled from the logo gradient
+   (#0989cf → #137cc4 → #3250a2). Default theme. */
 :root,
+html[data-theme="oficina"] {
+  --primary: oklch(0.569 0.141 246);
+  --primary-foreground: oklch(0.985 0 0);
+  --primary-hover: oklch(0.608 0.146 246);
+  --primary-soft: oklch(0.569 0.141 246 / 0.12);
+  --primary-soft-2: oklch(0.569 0.141 246 / 0.22);
+  --ring: oklch(0.569 0.141 246);
+  --chart-1: oklch(0.569 0.141 246);
+  --chart-2: oklch(0.455 0.137 266);
+  --sidebar-primary: oklch(0.569 0.141 246);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.569 0.141 246);
+}
+
 html[data-theme="violet"] {
   --primary: oklch(0.526 0.247 293);
   --primary-foreground: oklch(0.985 0 0);

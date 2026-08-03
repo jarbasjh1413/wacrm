@@ -26,6 +26,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { INTL_LOCALE } from '@/lib/app-locale';
 import {
   AlertTriangle,
   CheckCircle,
@@ -307,7 +308,7 @@ export default function JoinPage() {
           {ROLE_LABEL[peek.role]}
         </span>
         . Link valid until{' '}
-        {new Date(peek.expires_at).toLocaleDateString(undefined, {
+        {new Date(peek.expires_at).toLocaleDateString(INTL_LOCALE, {
           year: 'numeric',
           month: 'short',
           day: 'numeric',

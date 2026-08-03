@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { formatShortDate } from '@/lib/app-locale';
 import { Broadcast } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -277,7 +278,7 @@ export default function BroadcastsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground sm:table-cell">
-                      {new Date(broadcast.created_at).toLocaleDateString()}
+                      {formatShortDate(broadcast.created_at)}
                     </TableCell>
                   </TableRow>
                 );

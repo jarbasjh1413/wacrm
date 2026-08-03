@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { formatFullDateTime } from '@/lib/app-locale';
 import {
   Eye,
   EyeOff,
@@ -502,7 +503,7 @@ export function WhatsAppConfig() {
                   dangerouslySetInnerHTML={{
                     __html: t('subscribedSince', {
                       date: config.registered_at
-                        ? new Date(config.registered_at).toLocaleString()
+                        ? formatFullDateTime(config.registered_at)
                         : t('unknownDate'),
                     }),
                   }}
