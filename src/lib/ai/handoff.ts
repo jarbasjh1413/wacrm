@@ -11,8 +11,8 @@ const MAX_QUOTE_LEN = 160
  * can't fail or add latency to the handoff.
  *
  * Reads as, e.g.:
- *   "🤖 AI agent handed off after 2 replies. Last customer message:
- *    “can I speak to a manager about my refund?”"
+ *   "🤖 O agente de IA passou o atendimento após 2 respostas. Última
+ *    mensagem do cliente: “posso falar com um gerente sobre a garantia?”"
  *
  * `replyCount` is the bot's auto-reply tally for the thread (0 when it
  * bailed on the very first inbound without answering).
@@ -29,15 +29,15 @@ export function buildHandoffSummary(args: {
 
   const replies =
     replyCount === 0
-      ? 'without replying'
-      : `after ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`
+      ? 'sem responder'
+      : `após ${replyCount} ${replyCount === 1 ? 'resposta' : 'respostas'}`
 
-  const base = `🤖 AI agent handed off ${replies}.`
+  const base = `🤖 O agente de IA passou o atendimento ${replies}.`
 
   if (!lastCustomer) return base
 
   const quote = truncate(lastCustomer.content.trim(), MAX_QUOTE_LEN)
-  return `${base} Last customer message: “${quote}”`
+  return `${base} Última mensagem do cliente: “${quote}”`
 }
 
 function truncate(text: string, max: number): string {

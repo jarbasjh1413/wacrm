@@ -12,24 +12,24 @@ describe('buildHandoffSummary', () => {
       replyCount: 2,
     })
     expect(summary).toBe(
-      '🤖 AI agent handed off after 2 replies. Last customer message: “I want a refund”',
+      '🤖 O agente de IA passou o atendimento após 2 respostas. Última mensagem do cliente: “I want a refund”',
     )
   })
 
-  it('uses the singular "reply" for a count of one', () => {
+  it('uses the singular "resposta" for a count of one', () => {
     const summary = buildHandoffSummary({
       messages: [{ role: 'user', content: 'help' }],
       replyCount: 1,
     })
-    expect(summary).toContain('after 1 reply.')
+    expect(summary).toContain('após 1 resposta.')
   })
 
-  it('says "without replying" when the bot bailed on the first inbound', () => {
+  it('says "sem responder" when the bot bailed on the first inbound', () => {
     const summary = buildHandoffSummary({
       messages: [{ role: 'user', content: 'agent please' }],
       replyCount: 0,
     })
-    expect(summary).toContain('handed off without replying.')
+    expect(summary).toContain('passou o atendimento sem responder.')
     expect(summary).toContain('“agent please”')
   })
 
@@ -61,6 +61,6 @@ describe('buildHandoffSummary', () => {
       messages: [{ role: 'assistant', content: 'greeting' }],
       replyCount: 0,
     })
-    expect(summary).toBe('🤖 AI agent handed off without replying.')
+    expect(summary).toBe('🤖 O agente de IA passou o atendimento sem responder.')
   })
 })
