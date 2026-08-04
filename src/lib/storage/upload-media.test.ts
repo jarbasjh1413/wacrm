@@ -34,13 +34,16 @@ describe("buildMediaPath", () => {
 });
 
 describe("MEDIA_MAX_BYTES_BY_KIND", () => {
-  it("caps images at Meta's tighter 5 MB limit", () => {
-    expect(MEDIA_MAX_BYTES_BY_KIND.image).toBe(5 * 1024 * 1024);
+  it("caps images at 8 MB", () => {
+    expect(MEDIA_MAX_BYTES_BY_KIND.image).toBe(8 * 1024 * 1024);
   });
 
-  it("caps video/audio/document at the 16 MB bucket limit", () => {
-    expect(MEDIA_MAX_BYTES_BY_KIND.video).toBe(16 * 1024 * 1024);
+  it("caps video/document at the 50 MB bucket limit (migration 041)", () => {
+    expect(MEDIA_MAX_BYTES_BY_KIND.video).toBe(50 * 1024 * 1024);
+    expect(MEDIA_MAX_BYTES_BY_KIND.document).toBe(50 * 1024 * 1024);
+  });
+
+  it("keeps voice notes at 16 MB (UX, not transport)", () => {
     expect(MEDIA_MAX_BYTES_BY_KIND.audio).toBe(16 * 1024 * 1024);
-    expect(MEDIA_MAX_BYTES_BY_KIND.document).toBe(16 * 1024 * 1024);
   });
 });

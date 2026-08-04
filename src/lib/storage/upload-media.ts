@@ -15,22 +15,25 @@ import { createClient } from "@/lib/supabase/client";
  */
 
 /** 16 MB — matches the `file_size_limit` on both buckets (migrations 016/020/023). */
-export const MEDIA_MAX_BYTES = 16 * 1024 * 1024;
+/** Teto genérico (uploads de mídia em flows) — segue o do bucket (041). */
+export const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
 
 /**
- * Per-kind upload ceilings that mirror Meta's WhatsApp Cloud API caps so
- * a file that the bucket would accept (≤16 MB) but Meta would reject is
- * caught client-side BEFORE upload — otherwise it lands in storage as an
- * orphan and the send fails with a confusing 400. Images are Meta's
- * tightest cap at 5 MB; documents are held at the 16 MB bucket limit
- * (Meta allows 100 MB, but the bucket — and shared-hosting upload UX —
- * caps lower).
+ * Tetos de upload por tipo, conferidos ANTES do upload para o arquivo
+ * não virar órfão no bucket com o envio falhando depois. No motor
+ * Evolution o limite da Meta não se aplica — o teto real é o
+ * file_size_limit do bucket chat-media (50 MB, migration 041, máximo
+ * do plano gratuito do Supabase Storage). Áudio segue menor porque
+ * notas de voz longas são um problema de UX, não de transporte.
  */
 export const MEDIA_MAX_BYTES_BY_KIND = {
-  image: 5 * 1024 * 1024,
-  video: 16 * 1024 * 1024,
+  image: 8 * 1024 * 1024,
+  // Motor Evolution: o cap de 16 MB da Meta não se aplica — o teto é o
+  // limite por arquivo do bucket chat-media (50 MB, migration 041, que
+  // por sua vez é o máximo do plano gratuito do Supabase Storage).
+  video: 50 * 1024 * 1024,
   audio: 16 * 1024 * 1024,
-  document: 16 * 1024 * 1024,
+  document: 50 * 1024 * 1024,
 } as const;
 
 /**
