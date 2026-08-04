@@ -12,6 +12,8 @@
  * every args interface.
  */
 
+import { reportEvolutionSendOutcome } from './connection-health'
+
 export interface EvolutionConn {
   /** e.g. https://evolution.oficinainformatica.tech (no trailing slash) */
   baseUrl: string
@@ -67,7 +69,7 @@ async function evolutionFetch(
   init: { method?: string; body?: unknown } = {}
 ): Promise<Response> {
   const url = `${normalizeBaseUrl(conn.baseUrl)}${path}`
-  return fetch(url, {
+  const response = await fetch(url, {
     method: init.method ?? (init.body !== undefined ? 'POST' : 'GET'),
     headers: {
       apikey: conn.apikey,
@@ -75,6 +77,28 @@ async function evolutionFetch(
     },
     ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
   })
+
+  // Saúde da conexão: todo envio (paths /message/*) reporta o resultado
+  // ao detector de socket zumbi. Fire-and-forget num clone da response
+  // para não consumir o body que o chamador vai ler.
+  if (path.startsWith('/message/')) {
+    const instanceName = path.split('/').pop() ?? ''
+    if (response.ok) {
+      reportEvolutionSendOutcome(instanceName, true)
+    } else {
+      response
+        .clone()
+        .json()
+        .then((data: EvolutionErrorResponse) => {
+          const detail = data.response?.message ?? data.message ?? data.error
+          const msg = Array.isArray(detail) ? detail.join('; ') : (detail ?? '')
+          reportEvolutionSendOutcome(instanceName, false, String(msg))
+        })
+        .catch(() => reportEvolutionSendOutcome(instanceName, false, ''))
+    }
+  }
+
+  return response
 }
 
 function toSendResult(data: EvolutionSendResponse, fallback: string): EvolutionSendResult {
