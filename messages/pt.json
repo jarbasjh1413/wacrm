@@ -39,7 +39,8 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configurações",
     "menuSignOut": "Sair",
-    "primaryNav": "Principal"
+    "primaryNav": "Principal",
+    "scheduled": "Agendadas"
   },
   "Header": {
     "dashboard": "Painel",
@@ -217,7 +218,22 @@
       "aiUnreachable": "Não foi possível conectar ao assistente de IA.",
       "recordingTooLong": "A gravação é muito longa (mais de 16 MB).",
       "voiceUnsupported": "A gravação de voz não é compatível com este navegador.",
-      "micDenied": "Acesso ao microfone negado ou indisponível."
+      "micDenied": "Acesso ao microfone negado ou indisponível.",
+      "scripts": "Scripts",
+      "scheduleMessage": "Agendar mensagem",
+      "scriptsTitle": "Disparar um script",
+      "scriptsEmpty": "Nenhum script criado ainda — crie em Configurações → Scripts.",
+      "scriptsLoadFailed": "Falha ao carregar os scripts",
+      "scriptRunning": "Enviando a sequência… as mensagens vão aparecendo na conversa.",
+      "scriptSent": "Script enviado — {n} {n, plural, one {mensagem} other {mensagens}}!",
+      "scriptFailed": "Falha ao executar o script",
+      "scheduleTitle": "Agendar esta mensagem",
+      "scheduleNeedText": "Escreva a mensagem antes de agendar.",
+      "scheduleNeedTime": "Escolha a data e a hora.",
+      "scheduled": "Mensagem agendada! Veja em Agendadas.",
+      "scheduleFailed": "Falha ao agendar a mensagem",
+      "scheduleCancel": "Cancelar",
+      "scheduleConfirm": "Agendar"
     },
     "bubble": {
       "photo": "Foto",
@@ -1598,7 +1614,8 @@
       "deals": "Negócios e moeda",
       "members": "Membros da equipe",
       "api": "Chaves de API",
-      "quick-replies": "Respostas rápidas"
+      "quick-replies": "Respostas rápidas",
+      "scripts": "Scripts"
     },
     "groups": {
       "account": "Conta",
@@ -1842,6 +1859,56 @@
       "removeSuccess": "Número removido.",
       "loadError": "Não foi possível carregar os números.",
       "genericError": "Algo deu errado."
+    },
+    "scripts": {
+      "title": "Scripts de mensagens",
+      "description": "Sequências prontas (ex.: \"Garantia\" = vídeo + 2 textos) disparadas com um clique na conversa. Suportam {{nome}}, {{primeiro_nome}} e {{telefone}}.",
+      "newScript": "Novo script",
+      "empty": "Nenhum script ainda",
+      "emptyHint": "Crie o primeiro — ex.: \"Garantia\", \"Orçamento\", \"Pós-venda\".",
+      "itemCount": "{n} {n, plural, one {item} other {itens}}",
+      "loadFailed": "Falha ao carregar os scripts",
+      "newTitle": "Novo script",
+      "editTitle": "Editar script",
+      "nameLabel": "Nome",
+      "namePlaceholder": "ex.: Garantia",
+      "descriptionLabel": "Descrição (interna)",
+      "descriptionPlaceholder": "ex.: vídeo da garantia + instruções",
+      "variablesHint": "Variáveis disponíveis:",
+      "itemLabel": "Mensagem {n}",
+      "types": {
+        "text": "Texto",
+        "image": "Imagem",
+        "video": "Vídeo",
+        "document": "Documento",
+        "audio": "Áudio"
+      },
+      "textPlaceholder": "Escreva a mensagem…",
+      "captionPlaceholder": "Legenda (opcional)…",
+      "delayLabel": "Pausa (s)",
+      "chooseFile": "Escolher arquivo",
+      "replaceFile": "Trocar arquivo",
+      "fileTooLarge": "Arquivo grande demais — limite de {mb} MB para esse tipo.",
+      "uploadFailed": "Falha no upload do arquivo",
+      "moveUp": "Mover para cima",
+      "moveDown": "Mover para baixo",
+      "removeItem": "Remover mensagem",
+      "addItem": "Adicionar mensagem",
+      "validateName": "Dê um nome ao script.",
+      "validateItems": "Adicione pelo menos uma mensagem.",
+      "validateTextItem": "A mensagem {n} está sem texto.",
+      "validateMediaItem": "A mensagem {n} está sem arquivo.",
+      "notSignedIn": "Você não está logado.",
+      "saveFailed": "Falha ao salvar o script",
+      "deleteFailed": "Falha ao excluir o script",
+      "toastCreated": "Script criado!",
+      "toastUpdated": "Script atualizado!",
+      "toastDeleted": "Script excluído",
+      "deleteTitle": "Excluir \"{name}\"?",
+      "deleteDesc": "A sequência some do botão Scripts do inbox. Mensagens já enviadas não são afetadas. Isso não pode ser desfeito.",
+      "cancel": "Cancelar",
+      "save": "Salvar script",
+      "delete": "Excluir"
     }
   },
   "Notifications": {
@@ -2084,5 +2151,28 @@
     "adminHint": "Acesso total, incluindo configurações, números e equipe.",
     "agentHint": "Trabalha no inbox, contatos, funis e disparos.",
     "viewerHint": "Acesso somente leitura a conversas e relatórios."
+  },
+  "Scheduled": {
+    "title": "Mensagens agendadas",
+    "subtitle": "Tudo que vai sair mais tarde — cancele antes do horário se mudar de ideia.",
+    "loadFailed": "Falha ao carregar as agendadas",
+    "empty": "Nada agendado",
+    "emptyHint": "No inbox, use o menu + → Agendar mensagem.",
+    "table": {
+      "contact": "Contato",
+      "content": "Conteúdo",
+      "when": "Enviar em",
+      "status": "Status"
+    },
+    "scriptContent": "Script: {name}",
+    "status": {
+      "scheduled": "Agendada",
+      "sent": "Enviada",
+      "canceled": "Cancelada",
+      "failed": "Falhou"
+    },
+    "cancel": "Cancelar",
+    "canceled": "Agendamento cancelado",
+    "cancelFailed": "Falha ao cancelar"
   }
 }

@@ -25,12 +25,20 @@ export async function register() {
   if (globalThis.__broadcastQueueTimer) return
 
   const { drainBroadcastQueue } = await import('@/lib/whatsapp/broadcast-queue')
+  const { drainScheduledMessages } = await import(
+    '@/lib/whatsapp/scheduled-queue'
+  )
 
   globalThis.__broadcastQueueTimer = setInterval(() => {
     drainBroadcastQueue().catch((err) => {
       console.error('[broadcast-queue] drain tick failed:', err)
     })
+    drainScheduledMessages().catch((err) => {
+      console.error('[scheduled-queue] drain tick failed:', err)
+    })
   }, DRAIN_INTERVAL_MS)
 
-  console.log('[broadcast-queue] fila de broadcasts ativa (tick a cada 15s)')
+  console.log(
+    '[broadcast-queue] filas de broadcasts + agendadas ativas (tick a cada 15s)',
+  )
 }

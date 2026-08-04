@@ -39,7 +39,8 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
     "menuSignOut": "Cerrar sesión",
-    "primaryNav": "Principal"
+    "primaryNav": "Principal",
+    "scheduled": "Programados"
   },
   "Header": {
     "dashboard": "Panel",
@@ -217,7 +218,22 @@
       "aiUnreachable": "No se pudo conectar con el asistente de IA.",
       "recordingTooLong": "La grabación es demasiado larga (más de 16 MB).",
       "voiceUnsupported": "La grabación de voz no es compatible con este navegador.",
-      "micDenied": "Acceso al micrófono denegado o no disponible."
+      "micDenied": "Acceso al micrófono denegado o no disponible.",
+      "scripts": "Guiones",
+      "scheduleMessage": "Programar mensaje",
+      "scriptsTitle": "Disparar un guion",
+      "scriptsEmpty": "Aún no hay guiones — crea uno en Configuración → Guiones.",
+      "scriptsLoadFailed": "Error al cargar los guiones",
+      "scriptRunning": "Enviando la secuencia… los mensajes aparecen en la conversación.",
+      "scriptSent": "¡Guion enviado — {n} {n, plural, one {mensaje} other {mensajes}}!",
+      "scriptFailed": "Error al ejecutar el guion",
+      "scheduleTitle": "Programar este mensaje",
+      "scheduleNeedText": "Escribe el mensaje antes de programar.",
+      "scheduleNeedTime": "Elige fecha y hora.",
+      "scheduled": "¡Mensaje programado! Míralo en Programados.",
+      "scheduleFailed": "Error al programar el mensaje",
+      "scheduleCancel": "Cancelar",
+      "scheduleConfirm": "Programar"
     },
     "bubble": {
       "photo": "Foto",
@@ -1598,7 +1614,8 @@
       "deals": "Negocios y moneda",
       "members": "Miembros del equipo",
       "api": "Claves de API",
-      "quick-replies": "Respuestas rápidas"
+      "quick-replies": "Respuestas rápidas",
+      "scripts": "Guiones"
     },
     "groups": {
       "account": "Cuenta",
@@ -1815,6 +1832,56 @@
       "textPlaceholder": "El texto del mensaje que se insertará",
       "cancel": "Cancelar",
       "save": "Guardar"
+    },
+    "scripts": {
+      "title": "Guiones de mensajes",
+      "description": "Secuencias listas (ej.: \"Garantía\" = video + 2 textos) disparadas con un clic en la conversación. Admiten {{nome}}, {{primeiro_nome}} y {{telefone}}.",
+      "newScript": "Nuevo guion",
+      "empty": "Aún no hay guiones",
+      "emptyHint": "Crea el primero — ej.: \"Garantía\", \"Presupuesto\", \"Posventa\".",
+      "itemCount": "{n} {n, plural, one {elemento} other {elementos}}",
+      "loadFailed": "Error al cargar los guiones",
+      "newTitle": "Nuevo guion",
+      "editTitle": "Editar guion",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "ej.: Garantía",
+      "descriptionLabel": "Descripción (interna)",
+      "descriptionPlaceholder": "ej.: video de garantía + instrucciones",
+      "variablesHint": "Variables disponibles:",
+      "itemLabel": "Mensaje {n}",
+      "types": {
+        "text": "Texto",
+        "image": "Imagen",
+        "video": "Video",
+        "document": "Documento",
+        "audio": "Audio"
+      },
+      "textPlaceholder": "Escribe el mensaje…",
+      "captionPlaceholder": "Leyenda (opcional)…",
+      "delayLabel": "Pausa (s)",
+      "chooseFile": "Elegir archivo",
+      "replaceFile": "Cambiar archivo",
+      "fileTooLarge": "Archivo demasiado grande — límite de {mb} MB.",
+      "uploadFailed": "Error al subir el archivo",
+      "moveUp": "Subir",
+      "moveDown": "Bajar",
+      "removeItem": "Quitar mensaje",
+      "addItem": "Añadir mensaje",
+      "validateName": "Dale un nombre al guion.",
+      "validateItems": "Añade al menos un mensaje.",
+      "validateTextItem": "El mensaje {n} no tiene texto.",
+      "validateMediaItem": "El mensaje {n} no tiene archivo.",
+      "notSignedIn": "No has iniciado sesión.",
+      "saveFailed": "Error al guardar el guion",
+      "deleteFailed": "Error al eliminar el guion",
+      "toastCreated": "¡Guion creado!",
+      "toastUpdated": "¡Guion actualizado!",
+      "toastDeleted": "Guion eliminado",
+      "deleteTitle": "¿Eliminar \"{name}\"?",
+      "deleteDesc": "La secuencia desaparece del botón Guiones del inbox. Los mensajes ya enviados no se ven afectados.",
+      "cancel": "Cancelar",
+      "save": "Guardar guion",
+      "delete": "Eliminar"
     }
   },
   "Notifications": {
@@ -2048,5 +2115,28 @@
   },
   "Common": {
     "loading": "Cargando..."
+  },
+  "Scheduled": {
+    "title": "Mensajes programados",
+    "subtitle": "Todo lo que saldrá más tarde — cancela antes de la hora si cambias de idea.",
+    "loadFailed": "Error al cargar los programados",
+    "empty": "Nada programado",
+    "emptyHint": "En el inbox, usa el menú + → Programar mensaje.",
+    "table": {
+      "contact": "Contacto",
+      "content": "Contenido",
+      "when": "Enviar el",
+      "status": "Estado"
+    },
+    "scriptContent": "Guion: {name}",
+    "status": {
+      "scheduled": "Programado",
+      "sent": "Enviado",
+      "canceled": "Cancelado",
+      "failed": "Falló"
+    },
+    "cancel": "Cancelar",
+    "canceled": "Programación cancelada",
+    "cancelFailed": "Error al cancelar"
   }
 }

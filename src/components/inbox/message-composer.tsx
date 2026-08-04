@@ -21,7 +21,11 @@ import {
   Plus,
   MessageSquareDashed,
   Zap,
+  Clapperboard,
+  CalendarClock,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { GatedButton } from "@/components/ui/gated-button";
 import {
@@ -151,6 +155,113 @@ export function MessageComposer({
     useState<InteractiveMessagePayload>(blankButtonsPayload);
   const [savingQuickReply, setSavingQuickReply] = useState(false);
   const [quickReplyOpen, setQuickReplyOpen] = useState(false);
+
+  // Scripts (Fase 3): sequências prontas disparadas com um toque.
+  const { accountId } = useAuth();
+  const [scriptsOpen, setScriptsOpen] = useState(false);
+  const [scriptsLoading, setScriptsLoading] = useState(false);
+  const [scriptsList, setScriptsList] = useState<
+    { id: string; name: string; description: string | null }[]
+  >([]);
+  const [runningScriptId, setRunningScriptId] = useState<string | null>(null);
+
+  // Agendamento (Fase 3): escrever agora, enviar depois.
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+
+  const openScriptsPicker = useCallback(async () => {
+    setScriptsOpen(true);
+    setScriptsLoading(true);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("message_scripts")
+      .select("id, name, description")
+      .order("name");
+    if (error) {
+      toast.error(t("scriptsLoadFailed"));
+      setScriptsOpen(false);
+    } else {
+      setScriptsList(data ?? []);
+    }
+    setScriptsLoading(false);
+  }, [t]);
+
+  const runScript = useCallback(
+    async (scriptId: string) => {
+      setRunningScriptId(scriptId);
+      try {
+        const res = await fetch(`/api/scripts/${scriptId}/run`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: conversationId }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(payload?.error || `HTTP ${res.status}`);
+        }
+        toast.success(t("scriptSent", { n: payload.sentCount ?? 0 }));
+        setScriptsOpen(false);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : t("scriptFailed"),
+        );
+      } finally {
+        setRunningScriptId(null);
+      }
+    },
+    [conversationId, t],
+  );
+
+  const openScheduleDialog = useCallback(() => {
+    if (!text.trim()) {
+      toast.error(t("scheduleNeedText"));
+      return;
+    }
+    setScheduleAt("");
+    setScheduleOpen(true);
+  }, [text, t]);
+
+  const confirmSchedule = useCallback(async () => {
+    if (!scheduleAt) {
+      toast.error(t("scheduleNeedTime"));
+      return;
+    }
+    if (!accountId) return;
+    setScheduling(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) throw new Error(t("readOnlyTitle"));
+
+      const { data: conv } = await supabase
+        .from("conversations")
+        .select("contact_id")
+        .eq("id", conversationId)
+        .maybeSingle();
+
+      const { error } = await supabase.from("scheduled_messages").insert({
+        account_id: accountId,
+        conversation_id: conversationId,
+        contact_id: conv?.contact_id ?? null,
+        created_by: userId,
+        content_text: text.trim(),
+        send_at: new Date(scheduleAt).toISOString(),
+      });
+      if (error) throw new Error(error.message);
+
+      setText("");
+      setScheduleOpen(false);
+      toast.success(t("scheduled"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("scheduleFailed"));
+    } finally {
+      setScheduling(false);
+    }
+  }, [scheduleAt, accountId, conversationId, text, t]);
 
   // Media attachment state. `draft` holds an uploaded-but-not-yet-sent
   // attachment; `busy` covers the upload/transcode window.
@@ -685,6 +796,14 @@ export function MessageComposer({
                 <Zap className="mr-2 h-4 w-4" />
                 {t("quickReplies")}
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openScriptsPicker()}>
+                <Clapperboard className="mr-2 h-4 w-4" />
+                {t("scripts")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openScheduleDialog()}>
+                <CalendarClock className="mr-2 h-4 w-4" />
+                {t("scheduleMessage")}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -792,6 +911,93 @@ export function MessageComposer({
         onOpenChange={setQuickReplyOpen}
         onPick={handlePickQuickReply}
       />
+
+      {/* Picker de scripts — 1 toque dispara a sequência na conversa. */}
+      <Dialog open={scriptsOpen} onOpenChange={setScriptsOpen}>
+        <DialogContent className="bg-popover border-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("scriptsTitle")}</DialogTitle>
+          </DialogHeader>
+          {scriptsLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : scriptsList.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              {t("scriptsEmpty")}
+            </p>
+          ) : (
+            <ul className="max-h-72 space-y-1 overflow-y-auto">
+              {scriptsList.map((script) => (
+                <li key={script.id}>
+                  <button
+                    type="button"
+                    onClick={() => void runScript(script.id)}
+                    disabled={runningScriptId !== null}
+                    className="flex w-full items-center gap-2 rounded-md border border-border bg-muted px-3 py-2 text-left text-sm text-foreground transition-colors hover:border-primary/40 disabled:opacity-50"
+                  >
+                    {runningScriptId === script.id ? (
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                    ) : (
+                      <Clapperboard className="h-4 w-4 shrink-0 text-primary" />
+                    )}
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">
+                        {script.name}
+                      </span>
+                      {script.description && (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {script.description}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {runningScriptId && (
+            <p className="text-center text-xs text-muted-foreground">
+              {t("scriptRunning")}
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Agendar a mensagem digitada. */}
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent className="bg-popover border-border sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("scheduleTitle")}</DialogTitle>
+          </DialogHeader>
+          <p className="whitespace-pre-wrap rounded-md bg-muted px-3 py-2 text-sm text-foreground line-clamp-4">
+            {text}
+          </p>
+          <input
+            type="datetime-local"
+            value={scheduleAt}
+            onChange={(e) => setScheduleAt(e.target.value)}
+            className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setScheduleOpen(false)}
+              disabled={scheduling}
+            >
+              {t("scheduleCancel")}
+            </Button>
+            <Button onClick={() => void confirmSchedule()} disabled={scheduling}>
+              {scheduling ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <CalendarClock className="mr-1 h-4 w-4" />
+              )}
+              {t("scheduleConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

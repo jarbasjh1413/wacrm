@@ -39,7 +39,8 @@
     "menuProfile": "Profile",
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
-    "primaryNav": "Primary"
+    "primaryNav": "Primary",
+    "scheduled": "Scheduled"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -217,7 +218,22 @@
       "aiUnreachable": "Couldn't reach the AI assistant.",
       "recordingTooLong": "Recording is too long (over 16 MB).",
       "voiceUnsupported": "Voice recording isn't supported in this browser.",
-      "micDenied": "Microphone access denied or unavailable."
+      "micDenied": "Microphone access denied or unavailable.",
+      "scripts": "Scripts",
+      "scheduleMessage": "Schedule message",
+      "scriptsTitle": "Fire a script",
+      "scriptsEmpty": "No scripts yet — create one in Settings → Scripts.",
+      "scriptsLoadFailed": "Failed to load scripts",
+      "scriptRunning": "Sending the sequence… messages appear in the thread.",
+      "scriptSent": "Script sent — {n} {n, plural, one {message} other {messages}}!",
+      "scriptFailed": "Failed to run the script",
+      "scheduleTitle": "Schedule this message",
+      "scheduleNeedText": "Write the message before scheduling.",
+      "scheduleNeedTime": "Pick a date and time.",
+      "scheduled": "Message scheduled! See it under Scheduled.",
+      "scheduleFailed": "Failed to schedule the message",
+      "scheduleCancel": "Cancel",
+      "scheduleConfirm": "Schedule"
     },
     "bubble": {
       "photo": "Photo",
@@ -1598,7 +1614,8 @@
       "fields": "Fields & tags",
       "deals": "Deals & currency",
       "members": "Team members",
-      "api": "API keys"
+      "api": "API keys",
+      "scripts": "Scripts"
     },
     "groups": {
       "account": "Account",
@@ -1842,6 +1859,56 @@
       "textPlaceholder": "The message text to insert",
       "cancel": "Cancel",
       "save": "Save"
+    },
+    "scripts": {
+      "title": "Message scripts",
+      "description": "Ready-made sequences (e.g. \"Warranty\" = video + 2 texts) fired with one click in a conversation. Support {{nome}}, {{primeiro_nome}} and {{telefone}}.",
+      "newScript": "New script",
+      "empty": "No scripts yet",
+      "emptyHint": "Create the first one — e.g. \"Warranty\", \"Quote\", \"Follow-up\".",
+      "itemCount": "{n} {n, plural, one {item} other {items}}",
+      "loadFailed": "Failed to load scripts",
+      "newTitle": "New script",
+      "editTitle": "Edit script",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Warranty",
+      "descriptionLabel": "Description (internal)",
+      "descriptionPlaceholder": "e.g. warranty video + instructions",
+      "variablesHint": "Available variables:",
+      "itemLabel": "Message {n}",
+      "types": {
+        "text": "Text",
+        "image": "Image",
+        "video": "Video",
+        "document": "Document",
+        "audio": "Audio"
+      },
+      "textPlaceholder": "Write the message…",
+      "captionPlaceholder": "Caption (optional)…",
+      "delayLabel": "Pause (s)",
+      "chooseFile": "Choose file",
+      "replaceFile": "Replace file",
+      "fileTooLarge": "File too large — {mb} MB limit for this type.",
+      "uploadFailed": "File upload failed",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeItem": "Remove message",
+      "addItem": "Add message",
+      "validateName": "Give the script a name.",
+      "validateItems": "Add at least one message.",
+      "validateTextItem": "Message {n} has no text.",
+      "validateMediaItem": "Message {n} has no file.",
+      "notSignedIn": "You are not signed in.",
+      "saveFailed": "Failed to save the script",
+      "deleteFailed": "Failed to delete the script",
+      "toastCreated": "Script created!",
+      "toastUpdated": "Script updated!",
+      "toastDeleted": "Script deleted",
+      "deleteTitle": "Delete \"{name}\"?",
+      "deleteDesc": "The sequence disappears from the inbox Scripts button. Already-sent messages are not affected. This cannot be undone.",
+      "cancel": "Cancel",
+      "save": "Save script",
+      "delete": "Delete"
     }
   },
   "roles": {
@@ -2084,5 +2151,28 @@
   },
   "Common": {
     "loading": "Loading..."
+  },
+  "Scheduled": {
+    "title": "Scheduled messages",
+    "subtitle": "Everything going out later — cancel before the time if you change your mind.",
+    "loadFailed": "Failed to load scheduled messages",
+    "empty": "Nothing scheduled",
+    "emptyHint": "In the inbox, use the + menu → Schedule message.",
+    "table": {
+      "contact": "Contact",
+      "content": "Content",
+      "when": "Send at",
+      "status": "Status"
+    },
+    "scriptContent": "Script: {name}",
+    "status": {
+      "scheduled": "Scheduled",
+      "sent": "Sent",
+      "canceled": "Canceled",
+      "failed": "Failed"
+    },
+    "cancel": "Cancel",
+    "canceled": "Scheduling canceled",
+    "cancelFailed": "Failed to cancel"
   }
 }
