@@ -74,10 +74,15 @@ export async function resolveAuditUserId(
   db: SupabaseClient,
   accountId: string
 ): Promise<string> {
+  // Pós-037 a conta pode ter várias linhas (multi-instância) — pega a
+  // mais antiga de forma determinística; .maybeSingle() sem limit
+  // erraria com 2+ números conectados.
   const { data: config } = await db
     .from('whatsapp_config')
     .select('user_id')
     .eq('account_id', accountId)
+    .order('created_at', { ascending: true })
+    .limit(1)
     .maybeSingle();
   const configOwner = config?.user_id as string | undefined;
   if (configOwner) return configOwner;

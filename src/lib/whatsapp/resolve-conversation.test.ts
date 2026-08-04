@@ -56,6 +56,9 @@ function makeDb(script: Script): SupabaseClient {
         convLookupCalls++;
         return Promise.resolve({ data: row ? [row] : [], error: null });
       }
+      // whatsapp_config: `.order().limit(1).maybeSingle()` keeps chaining
+      // (resolveAuditUserId hardened for multi-instance accounts).
+      if (table === 'whatsapp_config') return builder;
       return Promise.resolve({ data: [], error: null });
     },
     like: () => {

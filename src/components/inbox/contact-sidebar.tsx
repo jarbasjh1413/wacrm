@@ -15,11 +15,31 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { formatMediumDateTime } from "@/lib/app-locale";
+import { formatMediumDate, formatMediumDateTime } from "@/lib/app-locale";
 import { useTranslations } from "next-intl";
+
+/** Estado atual de uma OS na lateral — evento mais recente por os_id (043). */
+interface OsOrderRow {
+  os_id: string;
+  evento: string;
+  status: string | null;
+  equipamento: string | null;
+  valor_orcamento: number | null;
+  unidade: string | null;
+  data_evento: string;
+}
+
+/** Cores por status de OS (vocabulário do sistema de OS; fallback neutro). */
+const OS_STATUS_STYLES: Record<string, string> = {
+  pronto: "bg-emerald-500/15 text-emerald-400",
+  orcamento_enviado: "bg-blue-500/15 text-blue-400",
+  aguardando_aprovacao: "bg-amber-500/15 text-amber-400",
+  entregue: "bg-slate-500/15 text-muted-foreground",
+};
 
 interface ContactSidebarProps {
   contact: Contact | null;
@@ -33,6 +53,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
   const [copied, setCopied] = useState(false);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [notes, setNotes] = useState<ContactNote[]>([]);
+  const [osOrders, setOsOrders] = useState<OsOrderRow[]>([]);
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
@@ -42,8 +63,8 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
 
     const supabase = createClient();
 
-    // Fetch deals, notes, and tags in parallel
-    const [dealsRes, notesRes, tagsRes] = await Promise.all([
+    // Fetch deals, notes, tags and OS events in parallel
+    const [dealsRes, notesRes, tagsRes, osRes] = await Promise.all([
       supabase
         .from("deals")
         .select("*, stage:pipeline_stages(*)")
@@ -58,10 +79,25 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
         .from("contact_tags")
         .select("id, tag_id, tags(*)")
         .eq("contact_id", contact.id),
+      supabase
+        .from("os_events")
+        .select("os_id, evento, status, equipamento, valor_orcamento, unidade, data_evento")
+        .eq("contact_id", contact.id)
+        .order("data_evento", { ascending: false })
+        .limit(50),
     ]);
 
     if (dealsRes.data) setDeals(dealsRes.data);
     if (notesRes.data) setNotes(notesRes.data);
+    if (osRes.data) {
+      // Uma linha por EVENTO no banco; a lateral mostra o estado atual de
+      // cada OS = evento mais recente por os_id (lista já vem ordenada).
+      const latestByOs = new Map<string, OsOrderRow>();
+      for (const ev of osRes.data as OsOrderRow[]) {
+        if (!latestByOs.has(ev.os_id)) latestByOs.set(ev.os_id, ev);
+      }
+      setOsOrders([...latestByOs.values()]);
+    }
     if (tagsRes.data) {
       const mapped = tagsRes.data
         .filter((ct: Record<string, unknown>) => ct.tags)
@@ -244,6 +280,57 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
                           {deal.stage.name}
                         </span>
                       )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="my-4 border-t border-border" />
+
+          {/* Ordens de serviço (eventos do sistema de OS — Fase 4) */}
+          <div>
+            <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Wrench className="h-3 w-3" />
+              {tSidebar("osOrders")}
+            </div>
+            <div className="mt-2 space-y-2">
+              {osOrders.length === 0 ? (
+                <p className="px-1 text-xs text-muted-foreground">
+                  {tSidebar("noOsOrders")}
+                </p>
+              ) : (
+                osOrders.map((order) => (
+                  <div key={order.os_id} className="rounded-lg bg-muted px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {order.equipamento ||
+                          tSidebar("osNumber", { id: order.os_id })}
+                      </p>
+                      {order.status && (
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] capitalize",
+                            OS_STATUS_STYLES[order.status] ??
+                              "bg-muted-foreground/10 text-muted-foreground",
+                          )}
+                        >
+                          {order.status.replaceAll("_", " ")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {tSidebar("osNumber", { id: order.os_id })}
+                        {order.unidade ? ` · ${order.unidade}` : ""}
+                      </span>
+                      <span>
+                        {order.valor_orcamento != null
+                          ? `R$ ${order.valor_orcamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                          : formatMediumDate(order.data_evento)}
+                      </span>
                     </div>
                   </div>
                 ))

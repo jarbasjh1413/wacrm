@@ -292,7 +292,10 @@
       "deals": "Negócios",
       "noTags": "Nenhuma etiqueta",
       "noDeals": "Nenhum negócio",
-      "addNotePlaceholder": "Adicionar uma nota..."
+      "addNotePlaceholder": "Adicionar uma nota...",
+      "osOrders": "Ordens de serviço",
+      "noOsOrders": "Nenhuma OS registrada ainda",
+      "osNumber": "OS {id}"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",
