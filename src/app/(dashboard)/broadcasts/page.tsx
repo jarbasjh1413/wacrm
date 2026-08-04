@@ -244,8 +244,8 @@ export default function BroadcastsPage() {
                     <TableCell className="font-medium text-foreground">
                       {broadcast.name}
                     </TableCell>
-                    <TableCell className="hidden text-muted-foreground md:table-cell">
-                      {broadcast.template_name}
+                    <TableCell className="hidden max-w-56 truncate text-muted-foreground md:table-cell">
+                      {broadcast.template_name ?? broadcast.message_text ?? '—'}
                     </TableCell>
                     <TableCell className="hidden text-right text-muted-foreground tabular-nums sm:table-cell">
                       {broadcast.total_recipients}

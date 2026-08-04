@@ -163,7 +163,7 @@
       "noTeammates": "Nenhum colega disponível",
       "me": " (eu)",
       "noMessagesYet": "Nenhuma mensagem ainda",
-      "sendTemplateHint": "Envie um modelo para iniciar a conversa",
+      "sendTemplateHint": "Envie uma mensagem para iniciar a conversa",
       "selectConversation": "Selecione uma conversa",
       "selectConversationHint": "Escolha uma conversa à esquerda para começar a enviar mensagens",
       "today": "Hoje",
@@ -607,13 +607,13 @@
   "Broadcasts": {
     "page": {
       "title": "Transmissões",
-      "subtitle": "Envie mensagens em massa aos seus contatos usando modelos aprovados.",
+      "subtitle": "Envie mensagens em massa aos seus contatos, com ritmo seguro contra bloqueios.",
       "newBroadcast": "Nova Transmissão",
       "noBroadcastsYet": "Nenhuma transmissão ainda",
       "createFirst": "Crie sua primeira transmissão para alcançar seus contatos em escala.",
       "table": {
         "name": "Nome",
-        "template": "Modelo",
+        "template": "Conteúdo",
         "recipients": "Destinatários",
         "delivery": "Entrega",
         "read": "Lidas",
@@ -677,18 +677,23 @@
     },
     "new": {
       "title": "Nova Transmissão",
-      "subtitle": "Crie e envie uma mensagem de transmissão aos seus contatos.",
+      "subtitle": "Escreva uma mensagem com variáveis e dispare aos poucos, com segurança.",
       "steps": {
         "template": "Modelo",
         "audience": "Público",
         "personalize": "Personalizar",
-        "send": "Enviar"
+        "send": "Enviar",
+        "message": "Mensagem",
+        "review": "Revisar e enviar"
       },
       "toastGiveName": "Dê um nome à transmissão antes de salvar um rascunho.",
       "toastNotSignedIn": "Não conectado.",
       "toastNotLinked": "Seu perfil não está vinculado a uma conta.",
       "toastFailedDraft": "Falha ao salvar rascunho: {error}",
-      "toastDraftSaved": "Rascunho salvo"
+      "toastDraftSaved": "Rascunho salvo",
+      "toastQueued": "Disparo criado! As mensagens vão sair aos poucos, respeitando os limites de segurança.",
+      "toastScheduled": "Disparo agendado! Entra na fila na data marcada.",
+      "toastSendFailed": "Falha ao criar o disparo"
     },
     "wizard": {
       "next": "Avançar",
@@ -792,6 +797,40 @@
         "language": "Idioma",
         "confirmTitle": "Confirmar transmissão"
       }
+    },
+    "compose": {
+      "label": "Mensagem",
+      "placeholder": "Olá {{primeiro_nome}}! Aqui é da Oficina Informática…",
+      "variablesHint": "Inserir variável:",
+      "previewLabel": "Como {name} vai receber:",
+      "back": "Cancelar",
+      "next": "Avançar"
+    },
+    "review": {
+      "nameLabel": "Nome do disparo (interno)",
+      "namePlaceholder": "ex.: Promoção SSD — agosto",
+      "summaryAudience": "Público",
+      "summaryMessage": "Mensagem",
+      "audience": {
+        "all": "Todos os contatos",
+        "tags": "Contatos por tag",
+        "custom_field": "Filtro por campo personalizado",
+        "csv": "Lista importada (CSV)"
+      },
+      "whenLabel": "Quando enviar",
+      "sendNow": "Colocar na fila agora",
+      "schedule": "Agendar data e hora",
+      "antiBanNotice": "Para proteger seu número, as mensagens saem uma a uma com intervalo aleatório de 30–120 segundos, somente em horário comercial (9h–18h, seg–sáb) e com limite de 50 por dia. Um disparo grande pode levar mais de um dia — o sistema cuida disso sozinho. Quem responder \"parar\" ou \"sair\" deixa de receber disparos automaticamente.",
+      "back": "Voltar",
+      "saveDraft": "Salvar rascunho",
+      "processing": "Criando…",
+      "sendButton": "Iniciar disparo",
+      "scheduleButton": "Agendar disparo",
+      "confirmTitle": "Confirmar disparo",
+      "confirmDescNow": "O disparo entra na fila agora e as mensagens começam a sair respeitando os limites de segurança. Deseja continuar?",
+      "confirmDescScheduled": "O disparo entra na fila na data agendada e sai respeitando os limites de segurança. Deseja continuar?",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar"
     }
   },
   "Automations": {

@@ -113,11 +113,12 @@ const STEP_META: Record<AutomationStepType, StepMeta> = {
   close_conversation: { label: "close_conversation", icon: CircleSlash, border: "border-l-primary" },
 }
 
+// send_template (era Meta) saiu da lista — automações existentes com o
+// passo continuam renderizando via STEP_META, mas não dá para adicionar.
 const ADDABLE_STEPS: AutomationStepType[] = [
   "send_message",
   "send_buttons",
   "send_list",
-  "send_template",
   "add_tag",
   "remove_tag",
   "assign_conversation",

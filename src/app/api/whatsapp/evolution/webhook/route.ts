@@ -4,6 +4,10 @@ import { normalizePhone } from '@/lib/whatsapp/phone-utils'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
 import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
+import {
+  applyOptOutIfRequested,
+  flagBroadcastReplyIfAny,
+} from '@/lib/whatsapp/broadcast-inbound'
 import { decrypt } from '@/lib/whatsapp/encryption'
 import { getMediaBase64 } from '@/lib/whatsapp/evolution-api'
 
@@ -340,6 +344,21 @@ async function handleMessageUpsert(config: ConfigRow, data: EvolutionMessageData
     )
   }
 
+  // Broadcasts: marca 'replied' se este contato estava num disparo sem
+  // resposta, e aplica o opt-out (§11.5) se a mensagem for "parar"/"sair".
+  await flagBroadcastReplyIfAny(supabaseAdmin(), config.account_id, contactRecord.id)
+  const optedOut = await applyOptOutIfRequested(
+    supabaseAdmin(),
+    config.account_id,
+    contactRecord.id,
+    contentText,
+  )
+  if (optedOut) {
+    console.log(
+      `[evolution-webhook] contato ${contactRecord.id} pediu opt-out — tag aplicada`
+    )
+  }
+
   await dispatchWebhookEvent(supabaseAdmin(), config.account_id, 'message.received', {
     conversation_id: conversation.id,
     contact_id: contactRecord.id,
@@ -639,6 +658,31 @@ async function handleStatusUpdate(config: ConfigRow, rawData: unknown) {
       .from('messages')
       .update({ status: mapped })
       .eq('id', rows[0].id)
+
+    // Espelha nos destinatários de broadcast (fila evolution grava o
+    // Baileys key id em whatsapp_message_id). Mesma escada forward-only;
+    // o trigger de agregação atualiza os contadores do broadcast pai.
+    const { data: recipient } = await supabaseAdmin()
+      .from('broadcast_recipients')
+      .select('id, status')
+      .eq('whatsapp_message_id', engineId)
+      .maybeSingle()
+    if (recipient) {
+      const recRank = STATUS_LADDER.indexOf(recipient.status as string)
+      const mappedRank = STATUS_LADDER.indexOf(mapped)
+      const failedFromEarly =
+        mapped === 'failed' && ['pending', 'sent'].includes(recipient.status as string)
+      if (failedFromEarly || (mappedRank !== -1 && mappedRank > recRank)) {
+        const update: Record<string, unknown> = { status: mapped }
+        const nowIso = new Date().toISOString()
+        if (mapped === 'delivered') update.delivered_at = nowIso
+        if (mapped === 'read') update.read_at = nowIso
+        await supabaseAdmin()
+          .from('broadcast_recipients')
+          .update(update)
+          .eq('id', recipient.id)
+      }
+    }
 
     await dispatchWebhookEvent(supabaseAdmin(), config.account_id, 'message.status_updated', {
       whatsapp_message_id: engineId,

@@ -48,8 +48,23 @@ interface BroadcastPayload {
   headerMediaUrl?: string;
 }
 
+/**
+ * Broadcast inteligente (mensagem livre, motor Evolution — migration 039).
+ * Só cria as linhas: quem envia é a fila anti-ban do servidor
+ * (broadcast-queue.ts), com jitter de 30–120s, janela de horário
+ * comercial e teto diário. O navegador pode fechar à vontade.
+ */
+interface QueuedBroadcastPayload {
+  name: string;
+  messageText: string;
+  audience: AudienceConfig;
+  /** ISO datetime para agendar; null/undefined = entrar na fila agora. */
+  scheduledAt?: string | null;
+}
+
 interface UseBroadcastSendingReturn {
   createAndSendBroadcast: (payload: BroadcastPayload) => Promise<string>;
+  createQueuedBroadcast: (payload: QueuedBroadcastPayload) => Promise<string>;
   isProcessing: boolean;
   progress: number;
 }
@@ -571,5 +586,95 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
     }
   }
 
-  return { createAndSendBroadcast, isProcessing, progress };
+  async function createQueuedBroadcast(
+    payload: QueuedBroadcastPayload,
+  ): Promise<string> {
+    setIsProcessing(true);
+    setProgress(0);
+
+    const supabase = createClient();
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) throw new Error('Você não está logado.');
+      if (!accountId) throw new Error('Seu perfil não está vinculado a uma conta.');
+
+      const messageText = payload.messageText.trim();
+      if (!messageText) throw new Error('Escreva a mensagem do disparo.');
+
+      setProgress(10);
+      const contacts = await resolveAudience(payload.audience);
+      if (contacts.length === 0) {
+        throw new Error('Nenhum contato encontrado para esse público.');
+      }
+
+      setProgress(30);
+      const scheduledAt = payload.scheduledAt ?? null;
+      const { data: broadcast, error: broadcastError } = await supabase
+        .from('broadcasts')
+        .insert({
+          user_id: user.id,
+          account_id: accountId,
+          name: payload.name,
+          template_name: null,
+          message_text: messageText,
+          audience_filter: {
+            type: payload.audience.type,
+            tagIds: payload.audience.tagIds,
+            customField: payload.audience.customField,
+            excludeTagIds: payload.audience.excludeTagIds,
+          },
+          scheduled_at: scheduledAt,
+          // Agendado espera o relógio; imediato entra na fila já devido.
+          status: scheduledAt ? 'scheduled' : 'sending',
+          next_send_at: scheduledAt ?? new Date().toISOString(),
+          total_recipients: contacts.length,
+          sent_count: 0,
+          delivered_count: 0,
+          read_count: 0,
+          replied_count: 0,
+          failed_count: 0,
+        })
+        .select()
+        .single();
+
+      if (broadcastError || !broadcast) {
+        throw new Error(
+          `Falha ao criar o disparo: ${broadcastError?.message ?? 'erro desconhecido'}`,
+        );
+      }
+
+      setProgress(60);
+      const recipientRows = contacts.map((contact) => ({
+        broadcast_id: broadcast.id,
+        contact_id: contact.id,
+        status: 'pending' as const,
+      }));
+      for (let i = 0; i < recipientRows.length; i += INSERT_BATCH_SIZE) {
+        const batch = recipientRows.slice(i, i + INSERT_BATCH_SIZE);
+        const { error: recipientError } = await supabase
+          .from('broadcast_recipients')
+          .insert(batch);
+        if (recipientError) {
+          await supabase
+            .from('broadcasts')
+            .update({ status: 'failed' })
+            .eq('id', broadcast.id);
+          throw new Error(
+            `Falha ao registrar destinatários: ${recipientError.message}`,
+          );
+        }
+      }
+
+      setProgress(100);
+      return broadcast.id;
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  return { createAndSendBroadcast, createQueuedBroadcast, isProcessing, progress };
 }

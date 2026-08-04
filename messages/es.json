@@ -163,7 +163,7 @@
       "noTeammates": "No hay compañeros disponibles",
       "me": " (yo)",
       "noMessagesYet": "Aún no hay mensajes",
-      "sendTemplateHint": "Envía una plantilla para iniciar la conversación",
+      "sendTemplateHint": "Envía un mensaje para iniciar la conversación",
       "selectConversation": "Selecciona una conversación",
       "selectConversationHint": "Elige una conversación de la izquierda para empezar a chatear",
       "today": "Hoy",
@@ -607,13 +607,13 @@
   "Broadcasts": {
     "page": {
       "title": "Difusiones",
-      "subtitle": "Envía mensajes masivos a tus contactos usando plantillas aprobadas.",
+      "subtitle": "Envía mensajes masivos a tus contactos con un ritmo seguro.",
       "newBroadcast": "Nueva difusión",
       "noBroadcastsYet": "Aún no hay difusiones",
       "createFirst": "Crea tu primera difusión para llegar a tus contactos a gran escala.",
       "table": {
         "name": "Nombre",
-        "template": "Plantilla",
+        "template": "Contenido",
         "recipients": "Destinatarios",
         "delivery": "Entrega",
         "read": "Leídos",
@@ -677,18 +677,23 @@
     },
     "new": {
       "title": "Nueva difusión",
-      "subtitle": "Crea y envía un mensaje de difusión a tus contactos.",
+      "subtitle": "Escribe un mensaje con variables y envíalo poco a poco, con seguridad.",
       "steps": {
         "template": "Plantilla",
         "audience": "Audiencia",
         "personalize": "Personalizar",
-        "send": "Enviar"
+        "send": "Enviar",
+        "message": "Mensaje",
+        "review": "Revisar y enviar"
       },
       "toastGiveName": "Dale un nombre a la difusión antes de guardar un borrador.",
       "toastNotSignedIn": "No has iniciado sesión.",
       "toastNotLinked": "Tu perfil no está vinculado a una cuenta.",
       "toastFailedDraft": "No se pudo guardar el borrador: {error}",
-      "toastDraftSaved": "Borrador guardado"
+      "toastDraftSaved": "Borrador guardado",
+      "toastQueued": "¡Difusión creada! Los mensajes saldrán poco a poco, respetando los límites de seguridad.",
+      "toastScheduled": "¡Difusión programada! Entra en la cola en la fecha elegida.",
+      "toastSendFailed": "Error al crear la difusión"
     },
     "wizard": {
       "next": "Siguiente",
@@ -792,6 +797,40 @@
         "language": "Idioma",
         "confirmTitle": "Confirmar difusión"
       }
+    },
+    "compose": {
+      "label": "Mensaje",
+      "placeholder": "¡Hola {{primeiro_nome}}! Somos Oficina Informática…",
+      "variablesHint": "Insertar variable:",
+      "previewLabel": "Cómo lo recibirá {name}:",
+      "back": "Cancelar",
+      "next": "Siguiente"
+    },
+    "review": {
+      "nameLabel": "Nombre de la difusión (interno)",
+      "namePlaceholder": "ej.: Promo SSD — agosto",
+      "summaryAudience": "Audiencia",
+      "summaryMessage": "Mensaje",
+      "audience": {
+        "all": "Todos los contactos",
+        "tags": "Contactos por etiqueta",
+        "custom_field": "Filtro por campo personalizado",
+        "csv": "Lista importada (CSV)"
+      },
+      "whenLabel": "Cuándo enviar",
+      "sendNow": "Poner en cola ahora",
+      "schedule": "Programar fecha y hora",
+      "antiBanNotice": "Para proteger tu número, los mensajes salen de uno en uno con un intervalo aleatorio de 30–120 s, solo en horario comercial (9–18h, lun–sáb) y con un límite de 50 al día. Quien responda \"stop\" queda excluido automáticamente.",
+      "back": "Volver",
+      "saveDraft": "Guardar borrador",
+      "processing": "Creando…",
+      "sendButton": "Iniciar difusión",
+      "scheduleButton": "Programar difusión",
+      "confirmTitle": "Confirmar difusión",
+      "confirmDescNow": "La difusión entra en la cola ahora y los mensajes salen dentro de los límites de seguridad. ¿Continuar?",
+      "confirmDescScheduled": "La difusión entra en la cola en la fecha programada y sale dentro de los límites de seguridad. ¿Continuar?",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar"
     }
   },
   "Automations": {

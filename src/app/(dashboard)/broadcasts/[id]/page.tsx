@@ -296,7 +296,11 @@ export default function BroadcastDetailPage() {
               </span>
             </div>
             <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
-              <span>{t('template', { name: broadcast.template_name })}</span>
+              {broadcast.template_name ? (
+                <span>{t('template', { name: broadcast.template_name })}</span>
+              ) : (
+                <span className="max-w-72 truncate">{broadcast.message_text}</span>
+              )}
               <span>-</span>
               <span>
                 {t('createdAt', { date: formatShortDate(broadcast.created_at) })}

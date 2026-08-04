@@ -389,10 +389,20 @@ export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'repli
 export interface Broadcast {
   id: string;
   user_id: string;
+  account_id?: string;
   name: string;
-  template_name: string;
+  /** Era Meta: nome do template. NULL nos broadcasts de mensagem livre (039). */
+  template_name: string | null;
   template_language: string;
   template_variables?: Record<string, unknown>;
+  /**
+   * Broadcasts inteligentes (migration 039): corpo livre com variáveis
+   * {{nome}}/{{primeiro_nome}}/{{telefone}}, enviado pela fila
+   * anti-ban do servidor (broadcast-queue.ts).
+   */
+  message_text?: string | null;
+  /** Relógio da fila: próximo instante em que o broadcast pode enviar. */
+  next_send_at?: string | null;
   audience_filter?: Record<string, unknown>;
   scheduled_at?: string;
   status: BroadcastStatus;

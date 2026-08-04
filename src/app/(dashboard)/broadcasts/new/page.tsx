@@ -1,34 +1,37 @@
 'use client';
 
+// Wizard de broadcast inteligente (motor Evolution, migration 039):
+// Mensagem livre com variáveis → Público → Revisar & enviar.
+// Não há mais escolha de template da Meta — o envio é texto livre pela
+// fila anti-ban do servidor (broadcast-queue.ts). O antigo wizard de
+// 4 passos com templates vive no histórico do git (era Meta).
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { MessageTemplate } from '@/types';
-import { Step1ChooseTemplate } from '@/components/broadcasts/step1-choose-template';
+import { Step1ComposeMessage } from '@/components/broadcasts/step1-compose-message';
 import { Step2SelectAudience } from '@/components/broadcasts/step2-select-audience';
-import { Step3Personalize } from '@/components/broadcasts/step3-personalize';
-import { Step4ScheduleSend } from '@/components/broadcasts/step4-schedule-send';
+import { Step3ReviewSend } from '@/components/broadcasts/step3-review-send';
 import { useBroadcastSending } from '@/hooks/use-broadcast-sending';
 import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 const steps = [
-  { label: 'template', key: 'template' },
+  { label: 'message', key: 'message' },
   { label: 'audience', key: 'audience' },
-  { label: 'personalize', key: 'personalize' },
-  { label: 'send', key: 'send' },
+  { label: 'review', key: 'review' },
 ] as const;
 
 export default function NewBroadcastPage() {
   const router = useRouter();
   const t = useTranslations('Broadcasts.new');
   const { accountId } = useAuth();
-  const { createAndSendBroadcast, isProcessing, progress } = useBroadcastSending();
+  const { createQueuedBroadcast, isProcessing } = useBroadcastSending();
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [template, setTemplate] = useState<MessageTemplate | null>(null);
+  const [messageText, setMessageText] = useState('');
   const [audience, setAudience] = useState<{
     type: 'all' | 'tags' | 'custom_field' | 'csv';
     tagIds?: string[];
@@ -40,50 +43,32 @@ export default function NewBroadcastPage() {
     csvContacts?: { phone: string; name?: string }[];
     excludeTagIds?: string[];
   }>({ type: 'all' });
-  const [variables, setVariables] = useState<
-    Record<string, { type: 'static' | 'field' | 'custom_field'; value: string }>
-  >({});
-  const [headerMediaUrl, setHeaderMediaUrl] = useState('');
   const [name, setName] = useState('');
 
-  async function handleSend() {
-    if (!template) return;
-
+  async function handleSend(scheduledAt: string | null) {
     try {
-      const broadcastId = await createAndSendBroadcast({
+      const broadcastId = await createQueuedBroadcast({
         name,
-        template,
-        audience: {
-          type: audience.type,
-          tagIds: audience.tagIds,
-          customField: audience.customField,
-          csvContacts: audience.csvContacts,
-          excludeTagIds: audience.excludeTagIds,
-        },
-        variables,
-        headerMediaUrl,
+        messageText,
+        audience,
+        scheduledAt,
       });
+      toast.success(scheduledAt ? t('toastScheduled') : t('toastQueued'));
       router.push(`/broadcasts/${broadcastId}`);
     } catch (err) {
-      // Previously swallowed with console.error — the wizard would
-      // just no-op, leaving the user confused. Surface the reason.
-      const message = err instanceof Error ? err.message : 'Broadcast failed';
+      const message = err instanceof Error ? err.message : t('toastSendFailed');
       console.error('Broadcast failed:', err);
       toast.error(message);
     }
   }
 
   /**
-   * Writes a draft broadcast row — no recipients, no sending. The user
-   * can revisit it via the list page to finish the flow later. We
-   * don't persist the in-progress audience/variable config here
-   * because the current schema doesn't carry it past `audience_filter`
-   * and `template_variables`; those are enough for the user to
-   * recognize the draft but not to exactly round-trip into the wizard.
-   * A full resume-draft UX is a future polish.
+   * Rascunho: grava só a linha do broadcast (sem destinatários, fora da
+   * fila). O usuário reencontra pelo nome na lista; retomar o wizard
+   * exatamente de onde parou é polimento futuro.
    */
   async function handleSaveDraft() {
-    if (!template || !name.trim()) {
+    if (!messageText.trim() || !name.trim()) {
       toast.error(t('toastGiveName'));
       return;
     }
@@ -105,9 +90,8 @@ export default function NewBroadcastPage() {
       user_id: user.id,
       account_id: accountId,
       name: name.trim(),
-      template_name: template.name,
-      template_language: template.language ?? 'en_US',
-      template_variables: variables,
+      template_name: null,
+      message_text: messageText.trim(),
       audience_filter: {
         type: audience.type,
         tagIds: audience.tagIds,
@@ -189,9 +173,9 @@ export default function NewBroadcastPage() {
           }}
         >
           {currentStep === 0 && (
-            <Step1ChooseTemplate
-              selectedTemplate={template}
-              onSelect={setTemplate}
+            <Step1ComposeMessage
+              messageText={messageText}
+              onChange={setMessageText}
               onNext={() => setCurrentStep(1)}
               onBack={() => router.push('/broadcasts')}
             />
@@ -204,28 +188,16 @@ export default function NewBroadcastPage() {
               onBack={() => setCurrentStep(0)}
             />
           )}
-          {currentStep === 2 && template && (
-            <Step3Personalize
-              template={template}
-              variables={variables}
-              onUpdate={setVariables}
-              headerMediaUrl={headerMediaUrl}
-              onHeaderMediaUrlChange={setHeaderMediaUrl}
-              onNext={() => setCurrentStep(3)}
-              onBack={() => setCurrentStep(1)}
-            />
-          )}
-          {currentStep === 3 && template && (
-            <Step4ScheduleSend
+          {currentStep === 2 && (
+            <Step3ReviewSend
               name={name}
               onNameChange={setName}
-              template={template}
+              messageText={messageText}
               audience={audience}
               onSend={handleSend}
               onSaveDraft={handleSaveDraft}
-              onBack={() => setCurrentStep(2)}
+              onBack={() => setCurrentStep(1)}
               isProcessing={isProcessing}
-              progress={progress}
             />
           )}
         </div>

@@ -163,7 +163,7 @@
       "noTeammates": "No teammates available",
       "me": " (me)",
       "noMessagesYet": "No messages yet",
-      "sendTemplateHint": "Send a template to start the conversation",
+      "sendTemplateHint": "Send a message to start the conversation",
       "selectConversation": "Select a conversation",
       "selectConversationHint": "Choose a conversation from the left to start messaging",
       "today": "Today",
@@ -607,13 +607,13 @@
   "Broadcasts": {
     "page": {
       "title": "Broadcasts",
-      "subtitle": "Send bulk messages to your contacts using approved templates.",
+      "subtitle": "Send bulk messages to your contacts at a ban-safe pace.",
       "newBroadcast": "New Broadcast",
       "noBroadcastsYet": "No broadcasts yet",
       "createFirst": "Create your first broadcast to reach your contacts at scale.",
       "table": {
         "name": "Name",
-        "template": "Template",
+        "template": "Content",
         "recipients": "Recipients",
         "delivery": "Delivery",
         "read": "Read",
@@ -677,18 +677,23 @@
     },
     "new": {
       "title": "New Broadcast",
-      "subtitle": "Create and send a broadcast message to your contacts.",
+      "subtitle": "Write a message with variables and send it out gradually and safely.",
       "steps": {
         "template": "Template",
         "audience": "Audience",
         "personalize": "Personalize",
-        "send": "Send"
+        "send": "Send",
+        "message": "Message",
+        "review": "Review & send"
       },
       "toastGiveName": "Give the broadcast a name before saving a draft.",
       "toastNotSignedIn": "Not signed in.",
       "toastNotLinked": "Your profile is not linked to an account.",
       "toastFailedDraft": "Failed to save draft: {error}",
-      "toastDraftSaved": "Draft saved"
+      "toastDraftSaved": "Draft saved",
+      "toastQueued": "Broadcast created! Messages will go out gradually, respecting the safety limits.",
+      "toastScheduled": "Broadcast scheduled! It joins the queue at the chosen time.",
+      "toastSendFailed": "Failed to create the broadcast"
     },
     "wizard": {
       "next": "Next",
@@ -792,6 +797,40 @@
         "language": "Language",
         "confirmTitle": "Confirm Broadcast"
       }
+    },
+    "compose": {
+      "label": "Message",
+      "placeholder": "Hi {{primeiro_nome}}! This is Oficina Informática…",
+      "variablesHint": "Insert variable:",
+      "previewLabel": "How {name} will receive it:",
+      "back": "Cancel",
+      "next": "Next"
+    },
+    "review": {
+      "nameLabel": "Broadcast name (internal)",
+      "namePlaceholder": "e.g. SSD promo — August",
+      "summaryAudience": "Audience",
+      "summaryMessage": "Message",
+      "audience": {
+        "all": "All contacts",
+        "tags": "Contacts by tag",
+        "custom_field": "Custom-field filter",
+        "csv": "Imported list (CSV)"
+      },
+      "whenLabel": "When to send",
+      "sendNow": "Queue it now",
+      "schedule": "Schedule date & time",
+      "antiBanNotice": "To protect your number, messages go out one at a time with a random 30–120s gap, only during business hours (9am–6pm, Mon–Sat), capped at 50/day. Large broadcasts may span more than a day — the system handles it. Anyone replying \"stop\" is automatically opted out.",
+      "back": "Back",
+      "saveDraft": "Save draft",
+      "processing": "Creating…",
+      "sendButton": "Start broadcast",
+      "scheduleButton": "Schedule broadcast",
+      "confirmTitle": "Confirm broadcast",
+      "confirmDescNow": "The broadcast joins the queue now and messages start going out within the safety limits. Continue?",
+      "confirmDescScheduled": "The broadcast joins the queue at the scheduled time and goes out within the safety limits. Continue?",
+      "cancel": "Cancel",
+      "confirm": "Confirm"
     }
   },
   "Automations": {
