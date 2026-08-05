@@ -40,7 +40,8 @@
     "menuSettings": "Configuración",
     "menuSignOut": "Cerrar sesión",
     "primaryNav": "Principal",
-    "scheduled": "Programados"
+    "scheduled": "Programados",
+    "followups": "Seguimientos"
   },
   "Header": {
     "dashboard": "Panel",
@@ -2141,5 +2142,31 @@
     "cancel": "Cancelar",
     "canceled": "Programación cancelada",
     "cancelFailed": "Error al cancelar"
+  },
+  "Followups": {
+    "title": "Seguimientos",
+    "subtitle": "El agente detecta conversaciones estancadas y redacta el recordatorio — tú apruebas, editas o descartas. Los automáticos quedan en el registro.",
+    "loadFailed": "Error al cargar los seguimientos",
+    "emptyQueue": "Nada esperando aprobación 🎉",
+    "emptyQueueHint": "El agente revisa las conversaciones 2 veces al día en horario laboral.",
+    "approveSend": "Aprobar y enviar",
+    "discard": "Descartar",
+    "sentToast": "¡Seguimiento enviado!",
+    "discardedToast": "Sugerencia descartada",
+    "actionFailed": "Error al procesar la decisión",
+    "logTitle": "Últimos seguimientos",
+    "cenarios": {
+      "equipamento_pronto": "Equipo listo",
+      "pos_venda": "Posventa",
+      "orcamento_sem_resposta": "Presupuesto sin respuesta",
+      "lead_frio": "Lead frío"
+    },
+    "status": {
+      "sent": "Enviado",
+      "edited": "Editado y enviado",
+      "auto_sent": "Automático",
+      "discarded": "Descartado",
+      "approved": "Aprobado"
+    }
   }
 }

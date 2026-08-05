@@ -40,7 +40,8 @@
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
     "primaryNav": "Primary",
-    "scheduled": "Scheduled"
+    "scheduled": "Scheduled",
+    "followups": "Follow-ups"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -2177,5 +2178,31 @@
     "cancel": "Cancel",
     "canceled": "Scheduling canceled",
     "cancelFailed": "Failed to cancel"
+  },
+  "Followups": {
+    "title": "Follow-ups",
+    "subtitle": "The agent detects stalled conversations and drafts the nudge — you approve, edit or discard. Automatic ones land in the log below.",
+    "loadFailed": "Failed to load follow-ups",
+    "emptyQueue": "Nothing awaiting approval 🎉",
+    "emptyQueueHint": "The agent scans conversations twice a day during business hours. Delicate suggestions show up here; simple ones go out on their own.",
+    "approveSend": "Approve & send",
+    "discard": "Discard",
+    "sentToast": "Follow-up sent!",
+    "discardedToast": "Suggestion discarded",
+    "actionFailed": "Failed to process the decision",
+    "logTitle": "Recent follow-ups",
+    "cenarios": {
+      "equipamento_pronto": "Equipment ready",
+      "pos_venda": "Post-sale",
+      "orcamento_sem_resposta": "Unanswered quote",
+      "lead_frio": "Cold lead"
+    },
+    "status": {
+      "sent": "Sent",
+      "edited": "Edited & sent",
+      "auto_sent": "Automatic",
+      "discarded": "Discarded",
+      "approved": "Approved"
+    }
   }
 }

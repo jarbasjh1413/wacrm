@@ -40,7 +40,8 @@
     "menuSettings": "Configurações",
     "menuSignOut": "Sair",
     "primaryNav": "Principal",
-    "scheduled": "Agendadas"
+    "scheduled": "Agendadas",
+    "followups": "Follow-ups"
   },
   "Header": {
     "dashboard": "Painel",
@@ -2177,5 +2178,31 @@
     "cancel": "Cancelar",
     "canceled": "Agendamento cancelado",
     "cancelFailed": "Falha ao cancelar"
+  },
+  "Followups": {
+    "title": "Follow-ups",
+    "subtitle": "O agente detecta conversas paradas e redige a cobrança — você aprova, edita ou descarta. Os automáticos ficam no registro abaixo.",
+    "loadFailed": "Falha ao carregar os follow-ups",
+    "emptyQueue": "Nada esperando aprovação 🎉",
+    "emptyQueueHint": "O agente varre as conversas 2x ao dia em horário comercial. Sugestões delicadas aparecem aqui; as simples saem sozinhas.",
+    "approveSend": "Aprovar e enviar",
+    "discard": "Descartar",
+    "sentToast": "Follow-up enviado!",
+    "discardedToast": "Sugestão descartada",
+    "actionFailed": "Falha ao processar a decisão",
+    "logTitle": "Últimos follow-ups",
+    "cenarios": {
+      "equipamento_pronto": "Equipamento pronto",
+      "pos_venda": "Pós-venda",
+      "orcamento_sem_resposta": "Orçamento sem resposta",
+      "lead_frio": "Lead frio"
+    },
+    "status": {
+      "sent": "Enviado",
+      "edited": "Editado e enviado",
+      "auto_sent": "Automático",
+      "discarded": "Descartado",
+      "approved": "Aprovado"
+    }
   }
 }

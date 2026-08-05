@@ -18,6 +18,8 @@ const DRAIN_INTERVAL_MS = 15_000
 declare global {
   // eslint-disable-next-line no-var
   var __broadcastQueueTimer: ReturnType<typeof setInterval> | undefined
+  // eslint-disable-next-line no-var
+  var __followupTimer: ReturnType<typeof setInterval> | undefined
 }
 
 export async function register() {
@@ -28,6 +30,7 @@ export async function register() {
   const { drainScheduledMessages } = await import(
     '@/lib/whatsapp/scheduled-queue'
   )
+  const { maybeRunFollowupScan } = await import('@/lib/followups/engine')
 
   globalThis.__broadcastQueueTimer = setInterval(() => {
     drainBroadcastQueue().catch((err) => {
@@ -38,7 +41,21 @@ export async function register() {
     })
   }, DRAIN_INTERVAL_MS)
 
+  // Agente de follow-up: checagem a cada 30 min; o próprio engine se
+  // limita a ~2 varreduras/dia por conta, em horário comercial (§10).
+  globalThis.__followupTimer ??= setInterval(() => {
+    maybeRunFollowupScan()
+      .then((r) => {
+        if (r && (r.autoSent || r.queued)) {
+          console.log(
+            `[followups] varredura: ${r.autoSent} auto, ${r.queued} na fila, ${r.skippedByAi} dispensados pela IA`,
+          )
+        }
+      })
+      .catch((err) => console.error('[followups] scan failed:', err))
+  }, 30 * 60_000)
+
   console.log(
-    '[broadcast-queue] filas de broadcasts + agendadas ativas (tick a cada 15s)',
+    '[broadcast-queue] filas de broadcasts + agendadas + agente de follow-up ativos',
   )
 }
