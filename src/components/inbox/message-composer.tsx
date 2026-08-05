@@ -850,16 +850,32 @@ export function MessageComposer({
             )}
           />
 
-          <GatedButton
-            size="sm"
-            canAct={!readOnly}
-            gateReason="send messages"
-            disabled={!text.trim() || sessionExpired || sending}
-            onClick={handleSend}
-            className="h-9 w-9 shrink-0 rounded-full bg-wa-unread p-0 text-wa-unread-foreground hover:bg-wa-unread/90 disabled:opacity-40"
-          >
-            <Send className="h-4 w-4" />
-          </GatedButton>
+          {/* Estilo WhatsApp: campo vazio mostra o microfone (1 clique
+              grava); começou a digitar, vira o botão de enviar. */}
+          {text.trim() ? (
+            <GatedButton
+              size="sm"
+              canAct={!readOnly}
+              gateReason="send messages"
+              disabled={sessionExpired || sending}
+              onClick={handleSend}
+              className="h-9 w-9 shrink-0 rounded-full bg-wa-unread p-0 text-wa-unread-foreground hover:bg-wa-unread/90 disabled:opacity-40"
+            >
+              <Send className="h-4 w-4" />
+            </GatedButton>
+          ) : (
+            <GatedButton
+              size="sm"
+              canAct={!readOnly}
+              gateReason="send messages"
+              disabled={sessionExpired || busy}
+              title={t("voiceNote")}
+              onClick={() => void startRecording()}
+              className="h-9 w-9 shrink-0 rounded-full bg-wa-unread p-0 text-wa-unread-foreground hover:bg-wa-unread/90 disabled:opacity-40"
+            >
+              <Mic className="h-4 w-4" />
+            </GatedButton>
+          )}
         </div>
       )}
 
