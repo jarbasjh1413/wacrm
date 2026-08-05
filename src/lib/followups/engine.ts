@@ -169,7 +169,10 @@ async function scanAccount(
   }
 
   // Sem IA configurada não há o que redigir — o agente fica em espera.
-  const aiConfig = await loadAiConfig(db, accountId)
+  // requireActive: false — is_active é o interruptor do bot de
+  // auto-resposta do INBOX; o agente de follow-up tem o próprio
+  // (followup_settings.enabled) e só precisa da chave válida.
+  const aiConfig = await loadAiConfig(db, accountId, { requireActive: false })
   if (!aiConfig) {
     console.warn(`[followups] conta ${accountId} sem IA configurada — pulando`)
     return
@@ -523,12 +526,24 @@ async function generateFollowup(
     .filter(Boolean)
     .join('\n')
 
+  // A conversa quase sempre termina em mensagem NOSSA (é a natureza do
+  // follow-up) — e um histórico terminando no turno do assistente vira
+  // "prefill" na API da Anthropic (o modelo tenta CONTINUAR a última
+  // frase e devolve vazio). Fechamos sempre com um turno de usuário
+  // instruindo a avaliação.
   const { text } = await generateReply({
     config: aiConfig,
     systemPrompt,
-    messages: history.length
-      ? history
-      : [{ role: 'user' as const, content: '(sem histórico de mensagens ainda)' }],
+    messages: [
+      ...(history.length
+        ? history
+        : [{ role: 'user' as const, content: '(sem histórico de mensagens ainda)' }]),
+      {
+        role: 'user' as const,
+        content:
+          '[instrução do sistema — o cliente NÃO escreveu isto] Avalie o cenário e as regras do prompt e responda AGORA apenas com o JSON pedido.',
+      },
+    ],
   })
 
   return parseGeneration(text)
