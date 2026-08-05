@@ -300,6 +300,16 @@ Env vars novas: `EVOLUTION_BASE_URL`, `EVOLUTION_GLOBAL_APIKEY`,
   enviado/entregue/lido/respondeu por pessoa), (b) cenário de follow-up
   "recebeu broadcast e não respondeu há N dias" no agente da Fase 5,
   (c) relatórios de taxa de resposta por disparo.
+- Assistente de IA para criar automações (ideia do Jarbas, 05/08/2026): chat
+  onde o usuário DESCREVE a automação em português ("quando chegar mensagem com
+  'orçamento' fora do horário, responde X e me marca") e a IA monta a automação
+  de verdade (Claude API + tool que escreve no schema de automations/flows).
+  Estender o módulo de IA existente; fila de revisão antes de ativar.
+- Importar histórico antigo do WhatsApp (pedido do Jarbas, 05/08/2026): exige
+  religar a instância com syncFullHistory ativado (Evolution) + importador
+  Evolution DB → CRM com dedupe por whatsapp_message_id. Detalhe: conferir
+  settings de persistência da Evolution (hoje ela guarda pouco — findMessages
+  do Eduardo retornou só 3 msgs).
 - Ações CRM → OS na lateral da conversa (ideia do Jarbas, 05/08/2026): botão
   "Aprovar orçamento" (e afins) direto no card da OS — o CRM chama o sistema
   de OS, que muda o status e confirma de volta via os-events. Retroalimentação
@@ -341,6 +351,7 @@ Env vars novas: `EVOLUTION_BASE_URL`, `EVOLUTION_GLOBAL_APIKEY`,
 | 04/08/2026 | **Detector de conexão travada IMPLEMENTADO** ⚠️ Gancho central em `evolutionFetch` (evolution-api.ts): todo envio `/message/*` reporta resultado a `connection-health.ts`. 3 falhas "Connection Closed" em 10 min → (a) `whatsapp_config.status=disconnected` (Settings mostra a verdade), (b) notificação `system_alert` no sino p/ owner+admins com o passo a passo do restart no hPanel (cooldown 30 min). Envio OK zera o contador e restaura o status. Migration **042** (tipo system_alert em notifications) APLICADA; tipo TS + ícone TriangleAlert na página de notificações. 671 testes/lint OK. | Se o travamento acontecer de novo: em ~1 min de tentativas de envio o sino acende com a instrução — reiniciar o projeto Docker evolution-api no hPanel (ou pedir pro Claude fazer via Chrome). Próximo: Fase 4 (integração OS). |
 | 04/08/2026 | **FASE 4 IMPLEMENTADA (lado CRM): integração com o sistema de OS** 🔧 (a) Migration **043** APLICADA: os_events (histórico por evento; estado atual = evento mais recente por os_id; sem CHECK em status p/ vocabulário livre do sistema de OS; índices p/ lateral, dedupe e varredura da Fase 5; RLS leitura membros, escrita só service role). (b) POST /api/v1/os-events no padrão v1 (novo escopo **os:write**; find-or-create de contato pelo telefone reusa a lib de contatos; payload bruto guardado em jsonb). Smoke-test: 401 sem chave OK. (c) Lateral da conversa: seção "Ordens de serviço" (Wrench) entre Negócios e Notas — equipamento, badge de status colorido, OS nº/unidade, valor R$. (d) docs/integracao-os.md: contrato completo dos 2 sentidos (o GET /api/clientes/{telefone}/ordens fica p/ implementarmos no projeto do sistema de OS). Bônus: blindado resolveAuditUserId p/ contas multi-instância (.limit(1) — quebraria com 2º número). 671 testes/build OK. | **Checkpoint (metade Jarbas):** criar chave de API em Configurações → Chaves de API com escopo os:write, disparar o curl de exemplo do docs/integracao-os.md e ver a OS aparecer na lateral da conversa do contato. Depois: implementar o webhook no projeto do sistema de OS (usar o doc como guia) e a Fase 5 (agente de follow-up). |
 | 05/08/2026 | **CHECKPOINT FASE 4 VALIDADO** ✅🔧 Claude executou o teste de ponta a ponta (chave temporária criada→evento disparado pela API v1→chave revogada; find-or-create de contato confirmado) e o Jarbas viu a seção "Ordens de serviço" na lateral da conversa (Notebook Dell · Pronto · OS TESTE-1234 · R$ 450 · canoas). Dados de teste limpos em seguida. Jarbas captou a visão e propôs a retroalimentação (aprovar orçamento pela lateral) — anotada no roadmap §12. | Próximos (escolha do Jarbas): Fase 5 (agente de follow-up) ou implementar o webhook no projeto do sistema de OS via docs/integracao-os.md. |
+| 05/08/2026 | **Fotos de perfil do WhatsApp nos contatos** 📸 fetchProfilePictureUrl na evolution-api + avatar-sync.ts (URL do CDN expira → baixa os bytes → bucket chat-media `account-*/avatars/<contactId>.jpg` → contacts.avatar_url, que JÁ existia desde a 001) + gancho fire-and-forget no webhook (contato novo/sem foto) + header do thread renderizando (lista e lateral já renderizavam). Backfill executado: 7/7 contatos com foto. 671 testes OK. Jarbas também pediu: assistente de IA p/ criar automações conversando e histórico antigo do WhatsApp — ambos anotados no roadmap §12 com o caminho técnico. | Jarbas: F5 no inbox p/ ver as fotos. Escolher próximo: Fase 5 (agente follow-up), assistente de automações por IA, ou histórico completo (este exige re-parear o número com syncFullHistory). |
 
 ---
 

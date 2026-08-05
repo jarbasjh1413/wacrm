@@ -1,6 +1,7 @@
 import { NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { normalizePhone } from '@/lib/whatsapp/phone-utils'
+import { syncContactAvatar } from '@/lib/whatsapp/avatar-sync'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
 import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
@@ -210,6 +211,18 @@ async function handleMessageUpsert(config: ConfigRow, data: EvolutionMessageData
   )
   if (!contactOutcome) return
   const contactRecord = contactOutcome.contact
+
+  // Foto de perfil do WhatsApp — cosmético e fire-and-forget: contato
+  // novo (ou ainda sem foto) dispara a busca em segundo plano; nunca
+  // atrasa nem derruba o processamento da mensagem.
+  if (!contactRecord.avatar_url && config.evolution_instance_name) {
+    void syncContactAvatar({
+      contactId: contactRecord.id,
+      accountId: config.account_id,
+      phone,
+      instanceName: config.evolution_instance_name,
+    })
+  }
 
   const convResult = await findOrCreateConversation(
     config.account_id,

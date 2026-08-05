@@ -504,6 +504,36 @@ export async function sendInteractiveList(
 }
 
 // ============================================================
+// Profile picture
+// ============================================================
+
+export interface FetchProfilePictureArgs extends EvolutionConn {
+  /** Phone digits (no +). */
+  number: string
+}
+
+/**
+ * URL da foto de perfil do número no WhatsApp (CDN pps.whatsapp.net —
+ * a URL EXPIRA em semanas, então quem consome deve baixar e persistir
+ * os bytes, não guardar a URL). Retorna null quando o número não tem
+ * foto ou a privacidade dele esconde.
+ */
+export async function fetchProfilePictureUrl(
+  args: FetchProfilePictureArgs,
+): Promise<string | null> {
+  const response = await evolutionFetch(
+    args,
+    `/chat/fetchProfilePictureUrl/${encodeURIComponent(args.instanceName)}`,
+    { body: { number: args.number } },
+  )
+  if (!response.ok) return null
+  const data = (await response.json().catch(() => null)) as {
+    profilePictureUrl?: string | null
+  } | null
+  return data?.profilePictureUrl ?? null
+}
+
+// ============================================================
 // Incoming media
 // ============================================================
 
