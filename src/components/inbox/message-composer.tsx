@@ -82,6 +82,14 @@ import { QuickReplyPicker } from "./quick-reply-picker";
 /** Media content types an agent can send from the composer. */
 export type ComposerMediaKind = "image" | "video" | "document" | "audio";
 
+/** Tipo de anexo a partir do MIME — para colar/arrastar arquivos. */
+function kindFromMime(mime: string): ComposerMediaKind {
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("audio/")) return "audio";
+  return "document";
+}
+
 /** Supabase Storage bucket holding agent-sent chat attachments (migration 023). */
 export const CHAT_MEDIA_BUCKET = "chat-media";
 
@@ -184,6 +192,9 @@ export function MessageComposer({
     { id: string; name: string; description: string | null }[]
   >([]);
   const [runningScriptId, setRunningScriptId] = useState<string | null>(null);
+
+  // Colar/arrastar arquivo (réplica WhatsApp Web).
+  const [dragOver, setDragOver] = useState(false);
 
   // Emoji picker (réplica WhatsApp Web).
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -679,7 +690,28 @@ export function MessageComposer({
   // ---- Render --------------------------------------------------------
 
   return (
-    <div className="border-t border-border bg-card p-3">
+    // Réplica WhatsApp Web: arrastar um arquivo pra cá (ou Ctrl/Cmd+V com
+    // uma imagem copiada no campo de texto) já prepara o anexo.
+    <div
+      className={cn(
+        "border-t border-border bg-card p-3 transition-shadow",
+        dragOver && "ring-2 ring-inset ring-wa-unread/60",
+      )}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("Files")) {
+          e.preventDefault();
+          setDragOver(true);
+        }
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        setDragOver(false);
+        const file = e.dataTransfer.files?.[0];
+        if (!file || inputsDisabled || busy) return;
+        e.preventDefault();
+        void stageUpload(kindFromMime(file.type), file);
+      }}
+    >
       {replyTo && (
         <div className="mb-2">
           <ReplyQuote
@@ -894,6 +926,14 @@ export function MessageComposer({
             value={text}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            onPaste={(e) => {
+              // Ctrl/Cmd+V com imagem (print etc.) vira anexo direto.
+              const file = e.clipboardData?.files?.[0];
+              if (file && !inputsDisabled && !busy) {
+                e.preventDefault();
+                void stageUpload(kindFromMime(file.type), file);
+              }
+            }}
             placeholder={
               readOnly
                 ? t("readOnlyPlaceholder")

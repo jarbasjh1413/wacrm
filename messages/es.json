@@ -278,7 +278,8 @@
       "reactWith": "Reaccionar con {emoji}",
       "nothingToCopy": "Nada para copiar",
       "copied": "Copiado",
-      "copyFailed": "Error al copiar"
+      "copyFailed": "Error al copiar",
+      "forward": "Reenviar"
     },
     "replyQuote": {
       "photo": "[Foto]",
@@ -327,6 +328,13 @@
       "resumed": "IA reanudada.",
       "updateError": "No se pudo actualizar el asistente de IA.",
       "networkError": "No se pudo conectar con el servidor."
+    },
+    "forward": {
+      "title": "Reenviar mensaje",
+      "searchPlaceholder": "Buscar contacto…",
+      "sent": "Reenviado a {name}",
+      "failed": "Error al reenviar",
+      "noResults": "No se encontraron contactos"
     }
   },
   "Contacts": {

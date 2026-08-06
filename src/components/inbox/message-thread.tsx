@@ -42,6 +42,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./message-bubble";
 import { MessageActions } from "./message-actions";
+import { ForwardDialog } from "./forward-dialog";
 import {
   MessageComposer,
   CHAT_MEDIA_BUCKET,
@@ -270,6 +271,9 @@ export function MessageThread({
       cancelled = true;
     };
   }, [pinnedConfigId]);
+
+  // Encaminhar mensagem (réplica WhatsApp Web).
+  const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
 
   // Botão "descer pro fim": visível quando o agente rolou o histórico
   // para cima (réplica do WhatsApp Web).
@@ -1145,6 +1149,7 @@ export function MessageThread({
                         key={msg.id}
                         message={msg}
                         onReply={() => handleStartReply(msg)}
+                        onForward={() => setForwardTarget(msg)}
                         onReact={(emoji) => {
                           if (emoji) void postReaction(msg.id, emoji);
                         }}
@@ -1207,6 +1212,12 @@ export function MessageThread({
         onSendInteractive={handleSendInteractive}
         replyTo={replyTo}
         onClearReply={() => setReplyTo(null)}
+      />
+
+      {/* Encaminhar mensagem para outro contato (réplica WhatsApp Web). */}
+      <ForwardDialog
+        message={forwardTarget}
+        onOpenChange={(open) => !open && setForwardTarget(null)}
       />
     </div>
   );

@@ -278,7 +278,8 @@
       "reactWith": "React with {emoji}",
       "nothingToCopy": "Nothing to copy",
       "copied": "Copied",
-      "copyFailed": "Copy failed"
+      "copyFailed": "Copy failed",
+      "forward": "Forward"
     },
     "replyQuote": {
       "photo": "[Photo]",
@@ -327,6 +328,13 @@
       "resumed": "AI resumed.",
       "updateError": "Couldn’t update the AI assistant.",
       "networkError": "Couldn’t reach the server."
+    },
+    "forward": {
+      "title": "Forward message",
+      "searchPlaceholder": "Search contact…",
+      "sent": "Forwarded to {name}",
+      "failed": "Failed to forward",
+      "noResults": "No contacts found"
     }
   },
   "Contacts": {
