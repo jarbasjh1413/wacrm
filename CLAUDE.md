@@ -268,6 +268,49 @@ em /followups; aprovar e ver a mensagem sair.
 
 ---
 
+## 10.5 FASE 6 — Radar de Leads: IA que entende, agenda e escala (visão do Jarbas, 05/08/2026)
+
+Referência visual: extensão que o Jarbas usa no WhatsApp Web (chips de funil com
+contadores no topo: QUALIFICAR/FRIO/MORNO/QUENTE/RESERVOU...; painel lateral de
+scripts por categoria). Nossa vantagem sobre ela: banco + IA — a extensão exige
+classificação manual; aqui a IA classifica, agenda e escala sozinha.
+
+**Ciclo (exemplo canônico do Jarbas):** cliente diz "vou comprar dia 20" → IA
+grava o momento e AGENDA contato p/ dia 20 → agente chama no dia → 2 dias sem
+resposta → novo toque → "só mês que vem" → IA reagenda p/ mês seguinte, morno →
+nutrição contínua → "consegui um adiantamento, vou essa semana" → QUENTE 🔥 →
+notifica + atribui a um humano imediatamente. Tudo acompanhável visualmente.
+
+**Peças:**
+1. Migration `conversation_insights`: conversation_id UNIQUE, temperatura
+   (quente|morno|frio|indefinido), interesse, resumo, momentos JSONB
+   [{em, tipo, texto}] (tipos: promessa_data, objecao, orcamento, interesse,
+   pessoal), proximo_contato_em + motivo, escalado_em, ultima_analise_em.
+2. Analisador IA (extensão do módulo ai/): dispara ~10 min após a última
+   mensagem da conversa (fila no instrumentation, debounce; máx 1 análise/h
+   por conversa). Critérios ENSINADOS pelo Jarbas em português (campos
+   criterios_quente/morno/frio em followup_settings + tela de config).
+   Saída JSON: temperatura, interesse, resumo, momentos novos,
+   proximo_contato {quando, motivo} | null, escalar_humano bool + motivo.
+3. Ações: upsert insights; tag de temperatura na conversa; proximo_contato →
+   cenário novo 'promessa' no followup engine (dispara NA data, prioridade
+   sobre os genéricos); escalar_humano → notificação + atribuição + QUENTE.
+4. Retroalimentação: followup engine consome insights no prompt (contexto
+   rico) e usa decisões humanas passadas (sent/edited/discarded de
+   followup_suggestions) como exemplos de estilo.
+5. Visual: (a) card Radar no topo da lateral da conversa (temperatura em cor,
+   interesse, 3 momentos, próximo contato); (b) chips de funil com CONTADORES
+   no topo do inbox (clique filtra — réplica da extensão); (c) página
+   "Jornada": linha do tempo por lead + funil de conversão do período.
+6. UX relacionada: painel lateral de scripts/respostas por CATEGORIA
+   (ancorado, busca, 1 clique — réplica do painel direito da extensão;
+   requer campo categoria em quick_replies/message_scripts).
+
+**Checkpoint:** simular a jornada do exemplo canônico de ponta a ponta e
+acompanhá-la na página Jornada.
+
+---
+
 ## 11. Regras anti-ban (OBRIGATÓRIAS, valem para tudo)
 
 Com API não oficial, o risco real é banimento do número. Valem para broadcasts,
