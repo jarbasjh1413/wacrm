@@ -9,10 +9,29 @@ import {
 } from "@/lib/inbox/conversations";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X } from "lucide-react";
+import {
+  Search,
+  ChevronDown,
+  X,
+  Check,
+  ListChecks,
+  MailPlus,
+  Archive,
+  ArchiveRestore,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
 import { formatWhatsAppTime } from "@/lib/app-locale";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -66,6 +85,102 @@ export function ConversationList({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [loading, setLoading] = useState(true);
+
+  // Seleção múltipla + ações de conversa (réplica WhatsApp Web).
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteTargets, setDeleteTargets] = useState<string[] | null>(null);
+  const [acting, setActing] = useState(false);
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  /** Aplica patch no banco + atualização otimista na lista do pai. */
+  const applyConversationPatch = useCallback(
+    async (
+      ids: string[],
+      patch: Partial<Pick<Conversation, "status" | "unread_count">>,
+      successMsg: string,
+    ) => {
+      if (ids.length === 0) return;
+      setActing(true);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("conversations")
+        .update(patch)
+        .in("id", ids);
+      setActing(false);
+      if (error) {
+        toast.error(t("actionFailed"));
+        return;
+      }
+      onConversationsLoaded(
+        conversations.map((c) =>
+          ids.includes(c.id) ? { ...c, ...patch } : c,
+        ),
+      );
+      toast.success(successMsg);
+      exitSelectMode();
+    },
+    [conversations, exitSelectMode, onConversationsLoaded, t],
+  );
+
+  const deleteConversations = useCallback(
+    async (ids: string[]) => {
+      setActing(true);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("conversations")
+        .delete()
+        .in("id", ids);
+      setActing(false);
+      setDeleteTargets(null);
+      if (error) {
+        toast.error(t("actionFailed"));
+        return;
+      }
+      onConversationsLoaded(
+        conversations.filter((c) => !ids.includes(c.id)),
+      );
+      toast.success(t("bulkDeleted", { n: ids.length }));
+      exitSelectMode();
+    },
+    [conversations, exitSelectMode, onConversationsLoaded, t],
+  );
+
+  const handleRowAction = useCallback(
+    (action: ConversationAction, conv: Conversation) => {
+      switch (action) {
+        case "mark_unread":
+          void applyConversationPatch([conv.id], { unread_count: 1 }, t("markedUnread"));
+          break;
+        case "mark_read":
+          void applyConversationPatch([conv.id], { unread_count: 0 }, t("markedRead"));
+          break;
+        case "close":
+          void applyConversationPatch([conv.id], { status: "closed" }, t("bulkClosed", { n: 1 }));
+          break;
+        case "reopen":
+          void applyConversationPatch([conv.id], { status: "open" }, t("bulkReopened", { n: 1 }));
+          break;
+        case "delete":
+          setDeleteTargets([conv.id]);
+          break;
+      }
+    },
+    [applyConversationPatch, t],
+  );
   // Contact-based filters (issue #272). Tags use OR logic (a conversation
   // matches if its contact carries any selected tag), consistent with
   // Broadcast audience filtering. Company is an exact match on the field.
@@ -255,6 +370,22 @@ export function ConversationList({
             </button>
           ))}
 
+          {/* Modo seleção múltipla (ações em massa). */}
+          <button
+            type="button"
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            title={selectMode ? t("exitSelect") : t("selectChats")}
+            aria-pressed={selectMode}
+            className={cn(
+              "ml-auto flex h-7 w-7 items-center justify-center rounded-full transition-colors",
+              selectMode
+                ? "bg-wa-unread/25 text-foreground"
+                : "bg-muted text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {selectMode ? <X className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
+          </button>
+
           {tags.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -406,20 +537,132 @@ export function ConversationList({
                 isActive={conv.id === activeConversationId}
                 onSelect={handleSelect}
                 t={t}
+                selectMode={selectMode}
+                selected={selectedIds.has(conv.id)}
+                onToggleSelect={toggleSelected}
+                onAction={handleRowAction}
               />
             ))}
           </div>
         )}
       </ScrollArea>
+
+      {/* Barra de ações em massa (modo seleção). */}
+      {selectMode && (
+        <div className="flex items-center gap-1 border-t border-border bg-card px-2 py-2">
+          <span className="min-w-0 flex-1 truncate px-1 text-xs text-muted-foreground">
+            {t("selectedCount", { n: selectedIds.size })}
+          </span>
+          <button
+            type="button"
+            disabled={acting || selectedIds.size === 0}
+            onClick={() =>
+              void applyConversationPatch(
+                [...selectedIds],
+                { unread_count: 1 },
+                t("markedUnread"),
+              )
+            }
+            title={t("markUnread")}
+            className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
+          >
+            <MailPlus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            disabled={acting || selectedIds.size === 0}
+            onClick={() =>
+              void applyConversationPatch(
+                [...selectedIds],
+                { status: "closed" },
+                t("bulkClosed", { n: selectedIds.size }),
+              )
+            }
+            title={t("closeConversation")}
+            className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
+          >
+            <Archive className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            disabled={acting || selectedIds.size === 0}
+            onClick={() =>
+              void applyConversationPatch(
+                [...selectedIds],
+                { status: "open" },
+                t("bulkReopened", { n: selectedIds.size }),
+              )
+            }
+            title={t("reopenConversation")}
+            className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
+          >
+            <ArchiveRestore className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            disabled={acting || selectedIds.size === 0}
+            onClick={() => setDeleteTargets([...selectedIds])}
+            title={t("deleteConversation")}
+            className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-red-400 disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Confirmação de exclusão — destrutivo de verdade (apaga o
+          histórico da conversa no CRM; no WhatsApp do cliente nada muda). */}
+      <Dialog
+        open={deleteTargets !== null}
+        onOpenChange={(open) => !open && setDeleteTargets(null)}
+      >
+        <DialogContent className="bg-popover border-border sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-popover-foreground">
+              {t("deleteTitle", { n: deleteTargets?.length ?? 0 })}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t("deleteDesc")}</p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTargets(null)}
+              disabled={acting}
+              className="border-border text-muted-foreground hover:bg-muted"
+            >
+              {t("cancelAction")}
+            </Button>
+            <Button
+              onClick={() => deleteTargets && void deleteConversations(deleteTargets)}
+              disabled={acting}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {t("deleteConversation")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+/** Ações do menu de contexto / barra de seleção (réplica WhatsApp Web). */
+export type ConversationAction =
+  | "mark_unread"
+  | "mark_read"
+  | "close"
+  | "reopen"
+  | "delete";
 
 interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
   onSelect: (conversation: Conversation) => void;
   t: ReturnType<typeof useTranslations>;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
+  onAction: (action: ConversationAction, conversation: Conversation) => void;
 }
 
 function ConversationItem({
@@ -427,14 +670,19 @@ function ConversationItem({
   isActive,
   onSelect,
   t,
+  selectMode,
+  selected,
+  onToggleSelect,
+  onAction,
 }: ConversationItemProps) {
   const contact = conversation.contact;
   const displayName = contact?.name || contact?.phone || t("unknown");
   const initials = displayName.charAt(0).toUpperCase();
 
   const handleClick = useCallback(() => {
-    onSelect(conversation);
-  }, [onSelect, conversation]);
+    if (selectMode) onToggleSelect(conversation.id);
+    else onSelect(conversation);
+  }, [selectMode, onToggleSelect, onSelect, conversation]);
 
   // Padrão WhatsApp Web: 14:05 · ontem · segunda-feira · 31/07/2026.
   const timeAgo = conversation.last_message_at
@@ -442,15 +690,26 @@ function ConversationItem({
     : "";
 
   return (
-    <button
+    // div-com-role em vez de <button>: o chevron do menu de contexto é
+    // um botão próprio e HTML não permite botão dentro de botão.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
       className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
-        isActive && "border-l-2 border-primary bg-muted/70"
+        "group relative flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
+        isActive && !selectMode && "border-l-2 border-primary bg-muted/70",
+        selected && "bg-primary-soft"
       )}
     >
-      {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+      {/* Avatar (vira alvo de seleção no modo múltiplo) */}
+      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
         {contact?.avatar_url ? (
           <img
             src={contact.avatar_url}
@@ -459,6 +718,18 @@ function ConversationItem({
           />
         ) : (
           initials
+        )}
+        {selectMode && (
+          <span
+            className={cn(
+              "absolute -bottom-0.5 -right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-card",
+              selected
+                ? "bg-wa-unread text-wa-unread-foreground"
+                : "bg-muted text-transparent"
+            )}
+          >
+            <Check className="h-3 w-3" />
+          </span>
         )}
       </div>
 
@@ -490,6 +761,49 @@ function ConversationItem({
           </div>
         </div>
       </div>
-    </button>
+
+      {/* Chevron de contexto (hover) — réplica do WhatsApp Web. */}
+      {!selectMode && (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            onClick={(e) => e.stopPropagation()}
+            aria-label={t("rowMenu")}
+            className="absolute right-2 top-2 rounded-md bg-card/80 p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus:opacity-100 group-hover:opacity-100"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="border-border bg-popover"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {conversation.unread_count > 0 ? (
+              <DropdownMenuItem onClick={() => onAction("mark_read", conversation)}>
+                {t("markRead")}
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={() => onAction("mark_unread", conversation)}>
+                {t("markUnread")}
+              </DropdownMenuItem>
+            )}
+            {conversation.status === "closed" ? (
+              <DropdownMenuItem onClick={() => onAction("reopen", conversation)}>
+                {t("reopenConversation")}
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={() => onAction("close", conversation)}>
+                {t("closeConversation")}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={() => onAction("delete", conversation)}
+              className="text-red-400 focus:text-red-400"
+            >
+              {t("deleteConversation")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   );
 }
