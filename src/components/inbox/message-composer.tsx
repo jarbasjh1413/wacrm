@@ -26,6 +26,26 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { Smile } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+// Emojis mais usados no atendimento — grade estilo WhatsApp, sem
+// dependência externa. O teclado de emoji do SO (cmd+ctrl+espaço /
+// win+.) segue funcionando para o catálogo completo.
+const EMOJI_SET = [
+  "😀", "😂", "🤣", "😊", "😍", "😉", "🙃", "😅",
+  "🥰", "😎", "🤩", "🥳", "😢", "😭", "🥺", "😴",
+  "🤔", "😤", "🙄", "😳", "🤗", "🫡", "😁", "☺️",
+  "👍", "👎", "👏", "🙏", "🤝", "💪", "🤞", "👌",
+  "🫶", "🙌", "✌️", "🤙", "❤️", "💙", "💚", "💔",
+  "🔥", "✨", "⭐", "🎉", "💯", "✅", "❌", "⚠️",
+  "💰", "💸", "📱", "💻", "🖥️", "🔧", "🛠️", "📦",
+  "🚀", "🕐", "📅", "🎮", "🔋", "🖱️", "⌨️", "😇",
+] as const;
 import { Button } from "@/components/ui/button";
 import { GatedButton } from "@/components/ui/gated-button";
 import {
@@ -164,6 +184,21 @@ export function MessageComposer({
     { id: string; name: string; description: string | null }[]
   >([]);
   const [runningScriptId, setRunningScriptId] = useState<string | null>(null);
+
+  // Emoji picker (réplica WhatsApp Web).
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const insertEmoji = useCallback(
+    (emoji: string) => {
+      const el = textareaRef.current;
+      const pos = el?.selectionStart ?? text.length;
+      setText((prev) => prev.slice(0, pos) + emoji + prev.slice(pos));
+      requestAnimationFrame(() => {
+        el?.focus();
+        el?.setSelectionRange(pos + emoji.length, pos + emoji.length);
+      });
+    },
+    [text.length],
+  );
 
   // Agendamento (Fase 3): escrever agora, enviar depois.
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -732,6 +767,34 @@ export function MessageComposer({
         </div>
       ) : (
         <div className="flex items-end gap-2">
+          {/* Emoji — primeiro botão, como no WhatsApp Web. */}
+          <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+            <PopoverTrigger
+              disabled={inputsDisabled}
+              title={t("emoji")}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Smile className="h-4 w-4" />
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className="w-72 border-border bg-popover p-2"
+            >
+              <div className="grid grid-cols-8 gap-0.5">
+                {EMOJI_SET.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => insertEmoji(emoji)}
+                    className="flex h-8 w-8 items-center justify-center rounded text-lg transition-colors hover:bg-muted"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           {/* Attach menu — photo / video / document / voice. */}
           <DropdownMenu>
             <DropdownMenuTrigger

@@ -271,6 +271,19 @@ export function MessageThread({
     };
   }, [pinnedConfigId]);
 
+  // Botão "descer pro fim": visível quando o agente rolou o histórico
+  // para cima (réplica do WhatsApp Web).
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const handleThreadScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setShowJumpToBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 400);
+  }, []);
+  const jumpToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, []);
+
   // 24-hour session timer (Meta engine only — see sendEngine above)
   const sessionInfo = useMemo(() => {
     if (sendEngine !== "meta") return { expired: false, remaining: "" };
@@ -1074,7 +1087,11 @@ export function MessageThread({
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div
+        ref={scrollRef}
+        onScroll={handleThreadScroll}
+        className="flex-1 overflow-y-auto px-4 py-4"
+      >
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -1145,6 +1162,22 @@ export function MessageThread({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Botão "descer pro fim" (réplica WhatsApp Web): sticky dentro
+            da área de rolagem, só aparece quando o agente subiu no
+            histórico. */}
+        {showJumpToBottom && (
+          <div className="sticky bottom-1 flex justify-end pr-1">
+            <button
+              type="button"
+              onClick={jumpToBottom}
+              aria-label={t("jumpToBottom")}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-colors hover:text-foreground"
+            >
+              <ChevronDown className="h-5 w-5" />
+            </button>
           </div>
         )}
       </div>

@@ -176,7 +176,8 @@
       "toastReactionFailed": "Reaction failed: {reason}",
       "toastAssignmentFailed": "Failed to update assignment",
       "callWhatsApp": "Call on WhatsApp (opens the official app)",
-      "callPhone": "Call this number"
+      "callPhone": "Call this number",
+      "jumpToBottom": "Jump to latest messages"
     },
     "sessionTimer": {
       "expired": "Expired",
@@ -234,7 +235,8 @@
       "scheduled": "Message scheduled! See it under Scheduled.",
       "scheduleFailed": "Failed to schedule the message",
       "scheduleCancel": "Cancel",
-      "scheduleConfirm": "Schedule"
+      "scheduleConfirm": "Schedule",
+      "emoji": "Emoji"
     },
     "bubble": {
       "photo": "Photo",

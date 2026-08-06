@@ -176,7 +176,8 @@
       "toastReactionFailed": "Falha na reação: {reason}",
       "toastAssignmentFailed": "Falha ao atualizar a atribuição",
       "callWhatsApp": "Ligar pelo WhatsApp (abre o aplicativo oficial)",
-      "callPhone": "Ligar para o número"
+      "callPhone": "Ligar para o número",
+      "jumpToBottom": "Ir para o fim da conversa"
     },
     "sessionTimer": {
       "expired": "Expirada",
@@ -234,7 +235,8 @@
       "scheduled": "Mensagem agendada! Veja em Agendadas.",
       "scheduleFailed": "Falha ao agendar a mensagem",
       "scheduleCancel": "Cancelar",
-      "scheduleConfirm": "Agendar"
+      "scheduleConfirm": "Agendar",
+      "emoji": "Emoji"
     },
     "bubble": {
       "photo": "Foto",

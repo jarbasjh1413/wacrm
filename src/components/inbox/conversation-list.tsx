@@ -10,8 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, X } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { DATE_FNS_LOCALE } from "@/lib/app-locale";
+import { formatWhatsAppTime } from "@/lib/app-locale";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import {
@@ -238,31 +237,23 @@ export function ConversationList({
         </div>
 
         <div className="flex flex-wrap items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center justify-center h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted">
-                {activeFilter?.label ?? t("filterAll")}
-                <ChevronDown className="h-3 w-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="border-border bg-popover"
+          {/* Chips de filtro estilo WhatsApp Web (Tudo | Não lidas | …) —
+              sempre visíveis, um toque, sem menu escondido. */}
+          {FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFilter(opt.value)}
+              className={cn(
+                "h-7 rounded-full px-3 text-xs transition-colors",
+                filter === opt.value
+                  ? "bg-wa-unread/25 font-medium text-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground",
+              )}
             >
-              {FILTER_OPTIONS.map((opt) => (
-                <DropdownMenuItem
-                  key={opt.value}
-                  onClick={() => setFilter(opt.value)}
-                  className={cn(
-                    "text-sm",
-                    filter === opt.value
-                      ? "text-primary"
-                      : "text-popover-foreground"
-                  )}
-                >
-                  {opt.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              {opt.label}
+            </button>
+          ))}
 
           {tags.length > 0 && (
             <DropdownMenu>
@@ -445,11 +436,9 @@ function ConversationItem({
     onSelect(conversation);
   }, [onSelect, conversation]);
 
+  // Padrão WhatsApp Web: 14:05 · ontem · segunda-feira · 31/07/2026.
   const timeAgo = conversation.last_message_at
-    ? formatDistanceToNow(new Date(conversation.last_message_at), {
-        addSuffix: false,
-        locale: DATE_FNS_LOCALE,
-      })
+    ? formatWhatsAppTime(conversation.last_message_at)
     : "";
 
   return (
