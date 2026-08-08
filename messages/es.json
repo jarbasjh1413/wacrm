@@ -335,6 +335,16 @@
       "sent": "Reenviado a {name}",
       "failed": "Error al reenviar",
       "noResults": "No se encontraron contactos"
+    },
+    "radar": {
+      "title": "Radar",
+      "temperatura": {
+        "quente": "Caliente",
+        "morno": "Tibio",
+        "frio": "Frío",
+        "indefinido": "Analizando"
+      },
+      "nextContact": "Retomar el {date}"
     }
   },
   "Contacts": {
@@ -1647,7 +1657,8 @@
       "members": "Miembros del equipo",
       "api": "Claves de API",
       "quick-replies": "Respuestas rápidas",
-      "scripts": "Guiones"
+      "scripts": "Guiones",
+      "radar": "Radar de Leads"
     },
     "groups": {
       "account": "Cuenta",
@@ -1914,6 +1925,25 @@
       "cancel": "Cancelar",
       "save": "Guardar guion",
       "delete": "Eliminar"
+    },
+    "radar": {
+      "title": "Radar de Leads",
+      "description": "La IA lee las conversaciones, clasifica la temperatura del cliente y avisa cuando alguien se calienta.",
+      "enabled": "Radar activo",
+      "contextLabel": "Sobre el negocio (opcional)",
+      "contextPlaceholder": "Ej.: Vendemos notebooks nuevos y seminuevos con garantía…",
+      "contextHint": "Cuanto más sepa la IA, mejor entiende al cliente.",
+      "criteriaTitle": "Cómo clasificar a cada cliente",
+      "criteriaHint": "Escríbelo como si explicaras a un vendedor nuevo.",
+      "hotLabel": "Caliente — atender ya",
+      "hotPlaceholder": "Ej.: preguntó por cuotas, pidió la dirección, dijo \"voy para allá\".",
+      "warmLabel": "Tibio — nutrir",
+      "warmPlaceholder": "Ej.: le gustó un modelo pero sin fecha, está comparando.",
+      "coldLabel": "Frío — solo seguir",
+      "coldPlaceholder": "Ej.: solo mira, desapareció hace más de una semana.",
+      "save": "Guardar criterios",
+      "saved": "Criterios guardados.",
+      "saveFailed": "Error al guardar"
     }
   },
   "Notifications": {
@@ -2187,7 +2217,8 @@
       "equipamento_pronto": "Equipo listo",
       "pos_venda": "Posventa",
       "orcamento_sem_resposta": "Presupuesto sin respuesta",
-      "lead_frio": "Lead frío"
+      "lead_frio": "Lead frío",
+      "promessa": "Promesa del cliente"
     },
     "status": {
       "sent": "Enviado",

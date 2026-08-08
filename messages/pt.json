@@ -335,6 +335,16 @@
       "sent": "Encaminhada para {name}",
       "failed": "Falha ao encaminhar",
       "noResults": "Nenhum contato encontrado"
+    },
+    "radar": {
+      "title": "Radar",
+      "temperatura": {
+        "quente": "Quente",
+        "morno": "Morno",
+        "frio": "Frio",
+        "indefinido": "Analisando"
+      },
+      "nextContact": "Retomar em {date}"
     }
   },
   "Contacts": {
@@ -1647,7 +1657,8 @@
       "members": "Membros da equipe",
       "api": "Chaves de API",
       "quick-replies": "Respostas rápidas",
-      "scripts": "Scripts"
+      "scripts": "Scripts",
+      "radar": "Radar de Leads"
     },
     "groups": {
       "account": "Conta",
@@ -1941,6 +1952,25 @@
       "cancel": "Cancelar",
       "save": "Salvar script",
       "delete": "Excluir"
+    },
+    "radar": {
+      "title": "Radar de Leads",
+      "description": "A IA lê as conversas, classifica a temperatura do cliente, guarda os momentos importantes e avisa quando alguém esquenta. Ensine aqui como a SUA loja pensa.",
+      "enabled": "Radar ligado",
+      "contextLabel": "Sobre o negócio (opcional)",
+      "contextPlaceholder": "Ex.: Vendemos notebooks novos e seminovos com garantia de 1 ano e 3 revisões. Também fazemos manutenção. Parcelamos em até 12x sem juros. Lojas em Canoas e Sapucaia.",
+      "contextHint": "Quanto mais a IA souber da loja, melhor ela entende o que o cliente quer.",
+      "criteriaTitle": "Como classificar cada cliente",
+      "criteriaHint": "Escreva como se estivesse explicando para um vendedor no primeiro dia. Se deixar em branco, a IA usa critérios genéricos de vendas.",
+      "hotLabel": "Quente — atender já",
+      "hotPlaceholder": "Ex.: perguntou o valor da parcela, pediu o endereço da loja, falou \"vou aí\", disse que tem o dinheiro, quer separar o aparelho.",
+      "warmLabel": "Morno — nutrir",
+      "warmPlaceholder": "Ex.: gostou de um modelo mas não deu data, está comparando com outras lojas, pediu ficha técnica.",
+      "coldLabel": "Frio — só acompanhar",
+      "coldPlaceholder": "Ex.: disse que é só pesquisa, sumiu há mais de uma semana, falou que fica pro ano que vem.",
+      "save": "Salvar critérios",
+      "saved": "Critérios salvos — a IA já usa a partir da próxima análise.",
+      "saveFailed": "Falha ao salvar os critérios"
     }
   },
   "Notifications": {
@@ -2223,7 +2253,8 @@
       "equipamento_pronto": "Equipamento pronto",
       "pos_venda": "Pós-venda",
       "orcamento_sem_resposta": "Orçamento sem resposta",
-      "lead_frio": "Lead frio"
+      "lead_frio": "Lead frio",
+      "promessa": "Promessa do cliente"
     },
     "status": {
       "sent": "Enviado",

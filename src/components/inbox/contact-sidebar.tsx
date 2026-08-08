@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatMediumDate, formatMediumDateTime } from "@/lib/app-locale";
+import { RadarCard } from "./radar-card";
 import { useTranslations } from "next-intl";
 
 /** Estado atual de uma OS na lateral — evento mais recente por os_id (043). */
@@ -43,9 +44,11 @@ const OS_STATUS_STYLES: Record<string, string> = {
 
 interface ContactSidebarProps {
   contact: Contact | null;
+  /** Conversa aberta — alimenta o card do Radar (§10.5). */
+  conversationId?: string | null;
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+export function ContactSidebar({ contact, conversationId }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
@@ -170,6 +173,11 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
     <div className="flex h-full w-70 flex-col border-l border-border bg-card">
       <ScrollArea className="flex-1">
         <div className="p-4">
+          {/* Radar de Leads — o resumo que a IA montou desta conversa.
+              Fica no topo: é o que responde "quem é esse cliente e em
+              que pé está?" antes de qualquer outra coisa. */}
+          {conversationId && <RadarCard conversationId={conversationId} />}
+
           {/* Contact Info */}
           <div className="flex flex-col items-center text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted text-lg font-semibold text-foreground">

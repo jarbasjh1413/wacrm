@@ -20,6 +20,8 @@ declare global {
   var __broadcastQueueTimer: ReturnType<typeof setInterval> | undefined
   // eslint-disable-next-line no-var
   var __followupTimer: ReturnType<typeof setInterval> | undefined
+  // eslint-disable-next-line no-var
+  var __radarTimer: ReturnType<typeof setInterval> | undefined
 }
 
 export async function register() {
@@ -55,7 +57,23 @@ export async function register() {
       .catch((err) => console.error('[followups] scan failed:', err))
   }, 30 * 60_000)
 
+  // Radar de Leads: a cada 5 min procura conversas que esfriaram e têm
+  // mensagem nova — o próprio analisador aplica o debounce por conversa
+  // e o teto de conversas por passada (§10.5).
+  const { runRadarScan } = await import('@/lib/insights/analyzer')
+  globalThis.__radarTimer ??= setInterval(() => {
+    runRadarScan()
+      .then((r) => {
+        if (r.analisadas || r.escaladas) {
+          console.log(
+            `[radar] ${r.analisadas} conversas analisadas, ${r.promessas} promessas, ${r.escaladas} escaladas`,
+          )
+        }
+      })
+      .catch((err) => console.error('[radar] scan failed:', err))
+  }, 5 * 60_000)
+
   console.log(
-    '[broadcast-queue] filas de broadcasts + agendadas + agente de follow-up ativos',
+    '[broadcast-queue] filas de broadcasts + agendadas + agente de follow-up + Radar de Leads ativos',
   )
 }

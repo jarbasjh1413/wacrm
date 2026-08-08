@@ -23,6 +23,7 @@ import { buildConversationContext } from '@/lib/ai/context'
 import { retrieveKnowledge } from '@/lib/ai/knowledge'
 import { generateReply } from '@/lib/ai/generate'
 import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
+import { normalizeMomentos } from '@/lib/insights/analyzer'
 
 // ---------------------------------------------------------------------------
 // Tipos e constantes
@@ -32,11 +33,19 @@ export type FollowupCenario =
   | 'pos_venda'
   | 'orcamento_sem_resposta'
   | 'lead_frio'
+  /** O Radar ouviu o cliente prometer uma data ("compro dia 20") — §10.5. */
+  | 'promessa'
 
-/** Automáticos enviam sozinhos; os demais entram na fila de aprovação. */
+/**
+ * Automáticos enviam sozinhos; os demais entram na fila de aprovação.
+ * 'promessa' entra aqui porque o retorno foi o PRÓPRIO cliente que
+ * marcou — é o follow-up menos intrusivo que existe, e travá-lo na fila
+ * quebraria o ciclo de nutrição (§10.5).
+ */
 const AUTO_CENARIOS: ReadonlySet<FollowupCenario> = new Set([
   'equipamento_pronto',
   'pos_venda',
+  'promessa',
 ])
 
 interface FollowupSettings {
@@ -182,7 +191,11 @@ async function scanAccount(
     .from('followup_settings')
     .upsert({ account_id: accountId, last_scan_at: now.toISOString() })
 
+  // Promessas primeiro: a data que o CLIENTE deu vale mais que qualquer
+  // prazo genérico nosso. Como só cabe um follow-up pendente por
+  // conversa, a ordem aqui é a ordem de prioridade real.
   const candidates = [
+    ...(await detectPromessas(db, accountId, now)),
     ...(await detectEquipamentoPronto(db, accountId, settings, now)),
     ...(await detectPosVenda(db, accountId, settings, now)),
     ...(await detectOrcamentoSemResposta(db, accountId, settings, now)),
@@ -290,6 +303,56 @@ async function conversationForContact(
 
 function diasDesde(iso: string, now: Date): number {
   return Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000)
+}
+
+/**
+ * Cenário 'promessa' (§10.5): o Radar gravou a data que o cliente deu
+ * ("compro dia 20", "semana que vem eu vejo") e ela chegou. Marca
+ * `promessa_atendida_em` na hora de enfileirar para não repetir — uma
+ * promessa nova reabre a janela (o analisador limpa o campo).
+ */
+async function detectPromessas(
+  db: SupabaseClient,
+  accountId: string,
+  now: Date,
+): Promise<Candidate[]> {
+  const out: Candidate[] = []
+  const { data: due } = await db
+    .from('conversation_insights')
+    .select(
+      'conversation_id, contact_id, interesse, proximo_contato_em, proximo_contato_motivo, resumo',
+    )
+    .eq('account_id', accountId)
+    .not('proximo_contato_em', 'is', null)
+    .is('promessa_atendida_em', null)
+    .lte('proximo_contato_em', now.toISOString())
+    .limit(30)
+
+  for (const row of due ?? []) {
+    if (!row.contact_id) continue
+    const conv = await conversationForContact(
+      db,
+      accountId,
+      row.contact_id as string,
+    )
+    if (!conv) continue
+
+    // Consome a promessa antes de gerar: se a IA falhar depois, o
+    // cliente não recebe a mesma cobrança em toda varredura.
+    await db
+      .from('conversation_insights')
+      .update({ promessa_atendida_em: now.toISOString() })
+      .eq('conversation_id', row.conversation_id as string)
+
+    out.push({
+      cenario: 'promessa',
+      conversationId: row.conversation_id as string,
+      contactId: row.contact_id as string,
+      contactName: conv.contactName,
+      contexto: `O PRÓPRIO CLIENTE indicou esta data: ${row.proximo_contato_motivo ?? 'disse que voltaria agora'}.${row.interesse ? ` Interesse: ${row.interesse}.` : ''}${row.resumo ? ` Situação: ${row.resumo}` : ''}`,
+    })
+  }
+  return out
 }
 
 async function detectEquipamentoPronto(
@@ -489,6 +552,41 @@ const CENARIO_INSTRUCAO: Record<FollowupCenario, string> = {
     'Retomar o orçamento enviado com leveza, colocando-se à disposição para dúvidas — nunca soar cobrança.',
   lead_frio:
     'Reaquecer a conversa parada de forma natural, referenciando o interesse original do cliente.',
+  promessa:
+    'Retomar exatamente como combinado com o cliente — ele mesmo pediu para falar agora. Cite o combinado com naturalidade ("como tinha combinado contigo"), sem soar cobrança e sem repetir tudo o que já foi dito.',
+}
+
+/**
+ * Bloco de contexto vindo do Radar de Leads. Vazio quando a conversa
+ * ainda não foi analisada — o agente segue funcionando sem ele.
+ */
+async function buildDossieBlock(
+  db: SupabaseClient,
+  conversationId: string,
+): Promise<string> {
+  const { data } = await db
+    .from('conversation_insights')
+    .select('temperatura, interesse, resumo, momentos')
+    .eq('conversation_id', conversationId)
+    .maybeSingle()
+  if (!data) return ''
+
+  const momentos = normalizeMomentos(data.momentos)
+    .slice(-6)
+    .map((m) => `  • ${m.texto}`)
+    .join('\n')
+
+  return [
+    '',
+    'O QUE JÁ SABEMOS DESTE CLIENTE (dossiê do Radar):',
+    `- Temperatura: ${data.temperatura}`,
+    data.interesse ? `- Interesse: ${data.interesse}` : '',
+    data.resumo ? `- Situação: ${data.resumo}` : '',
+    momentos ? `- Momentos da conversa:\n${momentos}` : '',
+    'Use isso para soar como quem acompanhou o cliente — sem repetir literalmente o que ele disse.',
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 async function generateFollowup(
@@ -506,11 +604,17 @@ async function generateFollowup(
     3,
   ).catch(() => [] as string[])
 
+  // Dossiê do Radar (§10.5): temperatura, interesse e momentos-chave que
+  // a IA já extraiu da conversa. É o que faz o follow-up soar como quem
+  // acompanhou o cliente, não como um robô que só viu o gatilho.
+  const dossie = await buildDossieBlock(db, candidate.conversationId)
+
   const systemPrompt = [
     'Você é o agente de follow-up da Oficina Informática (loja de manutenção e venda de notebooks em Canoas/Sapucaia do Sul, RS).',
     'Sua tarefa: decidir se cabe um follow-up AGORA e, se sim, redigir a mensagem de WhatsApp.',
     '',
     `CENÁRIO: ${CENARIO_INSTRUCAO[candidate.cenario]}`,
+    dossie,
     `FATOS: ${candidate.contexto}`,
     knowledge.length
       ? `SOBRE O NEGÓCIO:\n${knowledge.map((k) => `- ${k}`).join('\n')}`

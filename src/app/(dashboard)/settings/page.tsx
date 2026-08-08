@@ -14,6 +14,7 @@ import { AppearancePanel } from '@/components/settings/appearance-panel';
 import { EvolutionInstances } from '@/components/settings/evolution-instances';
 import { QuickRepliesManager } from '@/components/settings/quick-replies-manager';
 import { ScriptsManager } from '@/components/settings/scripts-manager';
+import { RadarSettings } from '@/components/settings/radar-settings';
 import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel';
 import { DealsSettings } from '@/components/settings/deals-settings';
 import { MembersTab } from '@/components/settings/members-tab';
@@ -79,6 +80,7 @@ function SettingsPageInner() {
     // Meta cleanup, but is no longer reachable.
     whatsapp: <EvolutionInstances />,
     'quick-replies': <QuickRepliesManager />,
+    radar: <RadarSettings />,
     scripts: <ScriptsManager />,
     fields: <FieldsAndTagsPanel />,
     deals: <DealsSettings />,

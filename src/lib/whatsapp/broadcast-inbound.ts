@@ -103,13 +103,23 @@ export async function applyOptOutIfRequested(
 
     if (!tagId) {
       // tags.user_id é NOT NULL (schema 001) — usa o dono da conta.
+      // ATENÇÃO: o papel de conta vive em `account_role` (enum da 017);
+      // `profiles.role` é a coluna TEXT legada, que vale 'user' para
+      // todo mundo. Filtrar por ela nunca casava e o opt-out (§11.5)
+      // silenciosamente não criava a tag. Sem owner, cai em qualquer
+      // membro — a tag precisa existir mais do que precisa de dono.
       const { data: owner } = await db
         .from('profiles')
-        .select('user_id')
+        .select('user_id, account_role')
         .eq('account_id', accountId)
-        .eq('role', 'owner')
-        .limit(1)
-        .maybeSingle()
+        .order('created_at', { ascending: true })
+        .limit(50)
+        .then((res) => ({
+          data:
+            res.data?.find((p) => p.account_role === 'owner') ??
+            res.data?.[0] ??
+            null,
+        }))
       if (!owner) return false
       const { data: created, error: createErr } = await db
         .from('tags')

@@ -125,7 +125,9 @@ async function alertStuckInstance(
       .from('profiles')
       .select('user_id')
       .eq('account_id', config.account_id)
-      .in('role', ['owner', 'admin'])
+      // `account_role` é o papel real (enum da 017); `role` é a coluna
+      // TEXT legada, que vale 'user' para todos.
+      .in('account_role', ['owner', 'admin'])
 
     const label =
       (config.display_name as string | null) ||

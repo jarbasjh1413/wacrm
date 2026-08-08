@@ -335,6 +335,16 @@
       "sent": "Forwarded to {name}",
       "failed": "Failed to forward",
       "noResults": "No contacts found"
+    },
+    "radar": {
+      "title": "Radar",
+      "temperatura": {
+        "quente": "Hot",
+        "morno": "Warm",
+        "frio": "Cold",
+        "indefinido": "Analyzing"
+      },
+      "nextContact": "Follow up on {date}"
     }
   },
   "Contacts": {
@@ -1647,7 +1657,8 @@
       "deals": "Deals & currency",
       "members": "Team members",
       "api": "API keys",
-      "scripts": "Scripts"
+      "scripts": "Scripts",
+      "radar": "Lead Radar"
     },
     "groups": {
       "account": "Account",
@@ -1941,6 +1952,25 @@
       "cancel": "Cancel",
       "save": "Save script",
       "delete": "Delete"
+    },
+    "radar": {
+      "title": "Lead Radar",
+      "description": "The AI reads conversations, rates each lead, keeps the key moments and pings you when someone heats up. Teach it how YOUR shop thinks.",
+      "enabled": "Radar on",
+      "contextLabel": "About the business (optional)",
+      "contextPlaceholder": "e.g. We sell new and refurbished laptops with a 1-year warranty…",
+      "contextHint": "The more the AI knows about the shop, the better it reads intent.",
+      "criteriaTitle": "How to rate each lead",
+      "criteriaHint": "Write it as if briefing a new salesperson. Leave blank to use generic sales criteria.",
+      "hotLabel": "Hot — handle now",
+      "hotPlaceholder": "e.g. asked about installments, asked for the address, said \"I am coming over\".",
+      "warmLabel": "Warm — nurture",
+      "warmPlaceholder": "e.g. liked a model but gave no date, is comparing shops.",
+      "coldLabel": "Cold — just watch",
+      "coldPlaceholder": "e.g. just browsing, gone for over a week, said \"maybe next year\".",
+      "save": "Save criteria",
+      "saved": "Criteria saved.",
+      "saveFailed": "Failed to save criteria"
     }
   },
   "roles": {
@@ -2223,7 +2253,8 @@
       "equipamento_pronto": "Equipment ready",
       "pos_venda": "Post-sale",
       "orcamento_sem_resposta": "Unanswered quote",
-      "lead_frio": "Cold lead"
+      "lead_frio": "Cold lead",
+      "promessa": "Customer promise"
     },
     "status": {
       "sent": "Sent",

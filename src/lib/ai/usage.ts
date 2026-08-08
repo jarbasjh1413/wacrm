@@ -6,7 +6,8 @@ export interface LogAiUsageArgs {
   /** Null for a draft not tied to one thread, or when the row was
    *  deleted between generation and logging. */
   conversationId: string | null
-  mode: 'auto_reply' | 'draft'
+  /** 'radar' = analisador de leads; 'followup' = agente de follow-up (045). */
+  mode: 'auto_reply' | 'draft' | 'radar' | 'followup'
   provider: AiProvider
   model: string
   /** Provider usage; a no-op when null (nothing worth recording). */
