@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   type ReactNode,
 } from "react"
 import { useRouter } from "next/navigation"
@@ -18,6 +19,7 @@ import {
   GripVertical,
   MessageSquare,
   FileText,
+  Image as ImageIcon,
   Tag,
   TagIcon,
   UserCheck,
@@ -34,6 +36,11 @@ import {
   MousePointerClick,
   List,
 } from "lucide-react"
+import {
+  uploadAccountMedia,
+  MEDIA_MAX_BYTES_BY_KIND,
+} from "@/lib/storage/upload-media"
+import { CHAT_MEDIA_BUCKET } from "@/components/inbox/message-composer"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -99,6 +106,7 @@ interface StepMeta {
 
 const STEP_META: Record<AutomationStepType, StepMeta> = {
   send_message: { label: "send_message", icon: MessageSquare, border: "border-l-primary" },
+  send_media: { label: "send_media", icon: ImageIcon, border: "border-l-sky-500" },
   send_buttons: { label: "send_buttons", icon: MousePointerClick, border: "border-l-primary" },
   send_list: { label: "send_list", icon: List, border: "border-l-primary" },
   send_template: { label: "send_template", icon: FileText, border: "border-l-primary" },
@@ -117,6 +125,7 @@ const STEP_META: Record<AutomationStepType, StepMeta> = {
 // passo continuam renderizando via STEP_META, mas não dá para adicionar.
 const ADDABLE_STEPS: AutomationStepType[] = [
   "send_message",
+  "send_media",
   "send_buttons",
   "send_list",
   "add_tag",
@@ -1269,6 +1278,108 @@ function AddButton({ onPick }: { onPick: (t: AutomationStepType) => void }) {
 // Per-step config editor
 // ------------------------------------------------------------
 
+/**
+ * Passo "Enviar mídia" (049): upload direto para o bucket chat-media —
+ * o mesmo caminho do composer e dos scripts, então o arquivo já sai com
+ * URL pública que a Evolution consegue buscar na hora do envio.
+ */
+function SendMediaFields({
+  cfg,
+  onChange,
+  t,
+}: {
+  cfg: Record<string, unknown>
+  onChange: (patch: Record<string, unknown>) => void
+  t: ReturnType<typeof useTranslations>
+}) {
+  const [uploading, setUploading] = useState(false)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const kind = ((cfg.media_type as string) ?? "image") as
+    | "image"
+    | "video"
+    | "document"
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    const max = MEDIA_MAX_BYTES_BY_KIND[kind]
+    if (max && file.size > max) {
+      toast.error(
+        t("config.mediaTooLarge", { mb: Math.round(max / 1024 / 1024) }),
+      )
+      return
+    }
+    setUploading(true)
+    try {
+      const { publicUrl } = await uploadAccountMedia(CHAT_MEDIA_BUCKET, file)
+      onChange({ media_url: publicUrl, filename: file.name })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("config.mediaFailed"))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <FieldBlock label={t("config.mediaType")}>
+        <select
+          value={kind}
+          onChange={(e) =>
+            onChange({ media_type: e.target.value, media_url: "", filename: "" })
+          }
+          className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground"
+        >
+          <option value="image">{t("config.mediaImage")}</option>
+          <option value="video">{t("config.mediaVideo")}</option>
+          <option value="document">{t("config.mediaDocument")}</option>
+        </select>
+      </FieldBlock>
+
+      <FieldBlock label={t("config.mediaFile")}>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            className="border-border text-muted-foreground hover:bg-muted"
+          >
+            {uploading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <ImageIcon className="size-4" />
+            )}
+            {cfg.media_url ? t("config.mediaReplace") : t("config.mediaChoose")}
+          </Button>
+          {typeof cfg.filename === "string" && cfg.filename && (
+            <span className="truncate text-xs text-muted-foreground">
+              {cfg.filename}
+            </span>
+          )}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => void handleFile(e)}
+        />
+      </FieldBlock>
+
+      <FieldBlock label={t("config.mediaCaption")}>
+        <Textarea
+          value={(cfg.caption as string) ?? ""}
+          onChange={(e) => onChange({ caption: e.target.value })}
+          placeholder={t("config.placeholderMessageText")}
+          className="min-h-16 bg-muted text-foreground"
+        />
+      </FieldBlock>
+    </div>
+  )
+}
+
 function StepEditor({
   step,
   onChange,
@@ -1292,6 +1403,14 @@ function StepEditor({
             className="min-h-24 bg-muted text-foreground"
           />
         </FieldBlock>
+      )
+    case "send_media":
+      return (
+        <SendMediaFields
+          cfg={cfg as Record<string, unknown>}
+          onChange={set}
+          t={t}
+        />
       )
     case "send_buttons":
     case "send_list":
@@ -1511,6 +1630,12 @@ function previewFor(step: BuilderStep): string {
   switch (step.step_type) {
     case "send_message":
       return (step.step_config.text as string) || "no text yet"
+    case "send_media":
+      return (
+        (step.step_config.filename as string) ||
+        (step.step_config.media_type as string) ||
+        "sem arquivo"
+      )
     case "send_buttons":
     case "send_list":
       return interactivePayloadPreviewText(asInteractive(step.step_config)) || "no body yet"

@@ -1001,7 +1001,8 @@
         "wait": "Aguardar",
         "condition": "Condição (Se/Senão)",
         "send_webhook": "Enviar Webhook",
-        "close_conversation": "Fechar Conversa"
+        "close_conversation": "Fechar Conversa",
+        "send_media": "Enviar mídia"
       },
       "triggers": {
         "new_message_received": {
@@ -1138,7 +1139,17 @@
         "matchType": "Tipo de correspondência",
         "matchContains": "Contém",
         "matchExact": "Exata",
-        "closeConversationHint": "Define o status da conversa como \"fechada\". Nenhuma configuração necessária."
+        "closeConversationHint": "Define o status da conversa como \"fechada\". Nenhuma configuração necessária.",
+        "mediaType": "Tipo de arquivo",
+        "mediaImage": "Imagem",
+        "mediaVideo": "Vídeo",
+        "mediaDocument": "Documento",
+        "mediaFile": "Arquivo",
+        "mediaChoose": "Escolher arquivo",
+        "mediaReplace": "Trocar arquivo",
+        "mediaCaption": "Legenda (opcional, aceita variáveis)",
+        "mediaTooLarge": "Arquivo grande demais — limite de {mb} MB.",
+        "mediaFailed": "Falha no upload"
       },
       "schedulePlaceholder": "Expressão cron ou HH:mm",
       "moveUp": "Mover para cima",

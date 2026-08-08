@@ -1001,7 +1001,8 @@
         "wait": "Esperar",
         "condition": "Condición (Si/Si no)",
         "send_webhook": "Enviar webhook",
-        "close_conversation": "Cerrar conversación"
+        "close_conversation": "Cerrar conversación",
+        "send_media": "Enviar medio"
       },
       "triggers": {
         "new_message_received": {
@@ -1138,7 +1139,17 @@
         "matchType": "Tipo de coincidencia",
         "matchContains": "Contiene",
         "matchExact": "Exacta",
-        "closeConversationHint": "Establece el estado de la conversación en \"cerrada\". No se necesita configuración."
+        "closeConversationHint": "Establece el estado de la conversación en \"cerrada\". No se necesita configuración.",
+        "mediaType": "Tipo de archivo",
+        "mediaImage": "Imagen",
+        "mediaVideo": "Video",
+        "mediaDocument": "Documento",
+        "mediaFile": "Archivo",
+        "mediaChoose": "Elegir archivo",
+        "mediaReplace": "Cambiar archivo",
+        "mediaCaption": "Leyenda (opcional)",
+        "mediaTooLarge": "Archivo demasiado grande — {mb} MB.",
+        "mediaFailed": "Error al subir"
       },
       "schedulePlaceholder": "Expresión cron u HH:mm",
       "moveUp": "Mover hacia arriba",

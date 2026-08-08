@@ -1001,7 +1001,8 @@
         "wait": "Wait",
         "condition": "Condition (If/Else)",
         "send_webhook": "Send Webhook",
-        "close_conversation": "Close Conversation"
+        "close_conversation": "Close Conversation",
+        "send_media": "Send media"
       },
       "triggers": {
         "new_message_received": {
@@ -1138,7 +1139,17 @@
         "matchType": "Match type",
         "matchContains": "Contains",
         "matchExact": "Exact",
-        "closeConversationHint": "Sets the conversation status to \"closed\". No configuration needed."
+        "closeConversationHint": "Sets the conversation status to \"closed\". No configuration needed.",
+        "mediaType": "File type",
+        "mediaImage": "Image",
+        "mediaVideo": "Video",
+        "mediaDocument": "Document",
+        "mediaFile": "File",
+        "mediaChoose": "Choose file",
+        "mediaReplace": "Replace file",
+        "mediaCaption": "Caption (optional, supports variables)",
+        "mediaTooLarge": "File too large — {mb} MB limit.",
+        "mediaFailed": "Upload failed"
       },
       "schedulePlaceholder": "Cron expression or HH:mm",
       "moveUp": "Move up",

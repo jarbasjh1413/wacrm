@@ -462,6 +462,7 @@ export type AutomationTriggerType =
 
 export type AutomationStepType =
   | 'send_message'
+  | 'send_media'
   | 'send_buttons'
   | 'send_list'
   | 'send_template'
@@ -524,6 +525,17 @@ export interface SendTemplateStepConfig {
   variables?: Record<string, string>;
 }
 
+/** Passo de automação que envia imagem, vídeo ou documento (049). */
+export interface SendMediaStepConfig {
+  media_type: 'image' | 'video' | 'document';
+  /** URL pública no bucket chat-media (subida pelo builder). */
+  media_url: string;
+  /** Legenda opcional — aceita variáveis como o texto. */
+  caption?: string;
+  /** Nome exibido ao destinatário; só vale para documento. */
+  filename?: string;
+}
+
 export interface TagStepConfig {
   tag_id: string;
 }
@@ -580,6 +592,7 @@ export interface SendWebhookStepConfig {
 
 export type AutomationStepConfig =
   | SendMessageStepConfig
+  | SendMediaStepConfig
   | SendButtonsStepConfig
   | SendListStepConfig
   | SendTemplateStepConfig

@@ -8,6 +8,7 @@ import type {
   InteractiveReplyTriggerConfig,
   TagTriggerConfig,
   SendMessageStepConfig,
+  SendMediaStepConfig,
   SendButtonsStepConfig,
   SendListStepConfig,
   SendTemplateStepConfig,
@@ -21,6 +22,7 @@ import type {
 import { supabaseAdmin } from './admin-client'
 import { addContactTagIfAbsent } from '@/lib/contacts/tag-write'
 import { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from '@/lib/contacts/tag-chain'
+import { engineSendMedia } from '@/lib/flows/meta-send'
 import { engineSendText, engineSendTemplate, engineSendInteractive } from './meta-send'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
@@ -365,6 +367,26 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
         text,
       })
       return `sent via Meta (${whatsapp_message_id})`
+    }
+
+    case 'send_media': {
+      // Reusa o remetente de mídia dos fluxos — mesma resolução de
+      // instância e mesmo tratamento de nono dígito do resto do app.
+      const cfg = step.step_config as SendMediaStepConfig
+      if (!args.contactId) throw new Error('send_media precisa de um contato')
+      if (!cfg.media_url?.trim()) throw new Error('send_media está sem arquivo')
+      const conversationId = await resolveConversationId(args)
+      const { whatsapp_message_id } = await engineSendMedia({
+        accountId: args.automation.account_id,
+        userId: args.automation.user_id,
+        conversationId,
+        contactId: args.contactId,
+        kind: cfg.media_type ?? 'image',
+        link: cfg.media_url,
+        caption: cfg.caption ? interpolate(cfg.caption, args) : undefined,
+        filename: cfg.filename,
+      })
+      return `mídia enviada (${whatsapp_message_id})`
     }
 
     case 'send_buttons':
