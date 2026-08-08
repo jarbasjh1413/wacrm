@@ -14,7 +14,9 @@ import {
   Video,
   FileText,
   Mic,
-  Square,
+  Trash2,
+  Pause,
+  Play,
   X,
   Loader2,
   Sparkles,
@@ -78,6 +80,7 @@ import {
 import { validateInteractivePayload } from "@/lib/whatsapp/interactive";
 import type { InteractiveMessagePayload, QuickReply } from "@/types";
 import { QuickReplyPicker } from "./quick-reply-picker";
+import { VoiceWaveform } from "./voice-waveform";
 
 /** Media content types an agent can send from the composer. */
 export type ComposerMediaKind = "image" | "video" | "document" | "audio";
@@ -335,7 +338,12 @@ export function MessageComposer({
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const recorderRef = useRef<import("opus-recorder").default | null>(null);
+  // Onda de voz ao vivo + pausa (réplica do WhatsApp Web).
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const [recordPaused, setRecordPaused] = useState(false);
   const cancelledRef = useRef(false);
+  /** Espelho de `recordPaused` para o timer, que roda fora do React. */
+  const pausedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Viewers (read-only role) can browse the inbox but never send.
@@ -626,9 +634,34 @@ export function MessageComposer({
       };
       recorderRef.current = recorder;
       await recorder.start();
+
+      // O opus-recorder já abriu o microfone e montou o grafo de áudio;
+      // pendura um analisador nele para desenhar a onda. Se a versão da
+      // lib não expuser esses nós, a gravação segue sem a onda.
+      try {
+        const ctx = (recorder as unknown as { audioContext?: AudioContext })
+          .audioContext;
+        const source = (
+          recorder as unknown as { sourceNode?: AudioNode }
+        ).sourceNode;
+        if (ctx && source) {
+          const node = ctx.createAnalyser();
+          node.fftSize = 512;
+          node.smoothingTimeConstant = 0.6;
+          source.connect(node);
+          setAnalyser(node);
+        }
+      } catch {
+        // Onda é enfeite — nunca pode impedir a gravação.
+      }
+
       setRecording(true);
+      setRecordPaused(false);
       setRecordSeconds(0);
-      timerRef.current = setInterval(() => setRecordSeconds((s) => s + 1), 1000);
+      timerRef.current = setInterval(
+        () => setRecordSeconds((s) => (pausedRef.current ? s : s + 1)),
+        1000,
+      );
     } catch {
       void recorderRef.current?.stop().catch(() => {});
       recorderRef.current = null;
@@ -639,13 +672,41 @@ export function MessageComposer({
   const stopRecording = useCallback(() => {
     clearTimer();
     setRecording(false);
+    setRecordPaused(false);
+    pausedRef.current = false;
+    setAnalyser(null);
     void recorderRef.current?.stop().catch(() => {});
   }, [clearTimer]);
+
+  /** Pausa/retoma sem perder o que já foi gravado (igual WhatsApp). */
+  const toggleRecordPause = useCallback(() => {
+    const recorder = recorderRef.current as unknown as {
+      pause?: () => void;
+      resume?: () => void;
+    } | null;
+    if (!recorder) return;
+    setRecordPaused((prev) => {
+      const next = !prev;
+      pausedRef.current = next;
+      try {
+        if (next) recorder.pause?.();
+        else recorder.resume?.();
+      } catch {
+        // Sem suporte a pausa: o estado visual volta atrás.
+        pausedRef.current = prev;
+        return prev;
+      }
+      return next;
+    });
+  }, []);
 
   const cancelRecording = useCallback(() => {
     cancelledRef.current = true;
     clearTimer();
     setRecording(false);
+    setRecordPaused(false);
+    pausedRef.current = false;
+    setAnalyser(null);
     void recorderRef.current?.stop().catch(() => {});
   }, [clearTimer]);
 
@@ -775,26 +836,61 @@ export function MessageComposer({
           t={t}
         />
       ) : recording ? (
-        // Recording bar — replaces the composer while the mic is live.
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-muted px-4 py-2.5">
-          <span className="flex h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
-          <span className="flex-1 text-sm text-foreground">
-            {t("recording", { current: formatDuration(recordSeconds), max: formatDuration(MAX_RECORDING_SECONDS) })}
-          </span>
+        // Barra de gravação no padrão WhatsApp Web: lixeira · ponto
+        // vermelho + tempo · onda da voz ao vivo · pausar · enviar.
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-muted px-3 py-2">
           <button
             type="button"
             onClick={cancelRecording}
-            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-card hover:text-foreground"
+            title={t("discardRecording")}
+            aria-label={t("discardRecording")}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-red-400"
           >
-            {t("cancel")}
+            <Trash2 className="h-4 w-4" />
           </button>
+
+          <span className="flex shrink-0 items-center gap-2">
+            <span
+              className={cn(
+                "h-2.5 w-2.5 rounded-full bg-red-500",
+                !recordPaused && "animate-pulse",
+              )}
+            />
+            <span className="text-sm tabular-nums text-foreground">
+              {formatDuration(recordSeconds)}
+            </span>
+          </span>
+
+          {/* Onda ao vivo — some sozinha se o navegador não suportar. */}
+          <div className="flex min-w-0 flex-1 justify-center overflow-hidden">
+            <VoiceWaveform
+              analyser={analyser}
+              paused={recordPaused}
+              className="text-muted-foreground"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleRecordPause}
+            title={recordPaused ? t("resumeRecording") : t("pauseRecording")}
+            aria-label={recordPaused ? t("resumeRecording") : t("pauseRecording")}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+          >
+            {recordPaused ? (
+              <Play className="h-4 w-4" />
+            ) : (
+              <Pause className="h-4 w-4" />
+            )}
+          </button>
+
           <Button
             size="sm"
             onClick={stopRecording}
             className="h-9 w-9 shrink-0 rounded-full bg-wa-unread p-0 text-wa-unread-foreground hover:bg-wa-unread/90"
             title={t("stopAndAttach")}
           >
-            <Square className="h-4 w-4" />
+            <Send className="h-4 w-4" />
           </Button>
         </div>
       ) : (

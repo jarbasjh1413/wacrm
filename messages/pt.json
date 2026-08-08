@@ -256,7 +256,10 @@
       "scheduleFailed": "Falha ao agendar a mensagem",
       "scheduleCancel": "Cancelar",
       "scheduleConfirm": "Agendar",
-      "emoji": "Emoji"
+      "emoji": "Emoji",
+      "discardRecording": "Descartar gravação",
+      "pauseRecording": "Pausar",
+      "resumeRecording": "Continuar gravando"
     },
     "bubble": {
       "photo": "Foto",
