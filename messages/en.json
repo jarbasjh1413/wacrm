@@ -376,7 +376,16 @@
       "emptyHint": "Create quick replies and scripts in Settings.",
       "scriptSent": "Script sent — {n} {n, plural, one {message} other {messages}}!",
       "emptyReply": "This reply has no text",
-      "sendFailed": "Failed to send"
+      "sendFailed": "Failed to send",
+      "newReply": "New reply",
+      "manageScripts": "Manage scripts (media sequences)",
+      "newTitlePlaceholder": "Name (e.g. Laptop price)",
+      "newCategoryPlaceholder": "Category (e.g. SALES)",
+      "newTextPlaceholder": "Reply text…",
+      "save": "Save",
+      "cancel": "Cancel",
+      "newSaved": "Reply saved!",
+      "newValidation": "Fill in the name and the text."
     }
   },
   "Contacts": {

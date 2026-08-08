@@ -376,7 +376,16 @@
       "emptyHint": "Crea respuestas rápidas y guiones en Configuración.",
       "scriptSent": "¡Guion enviado — {n} mensajes!",
       "emptyReply": "Esta respuesta no tiene texto",
-      "sendFailed": "Error al enviar"
+      "sendFailed": "Error al enviar",
+      "newReply": "Nueva respuesta",
+      "manageScripts": "Gestionar guiones",
+      "newTitlePlaceholder": "Nombre",
+      "newCategoryPlaceholder": "Categoría",
+      "newTextPlaceholder": "Texto de la respuesta…",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "newSaved": "¡Respuesta guardada!",
+      "newValidation": "Completa el nombre y el texto."
     }
   },
   "Contacts": {

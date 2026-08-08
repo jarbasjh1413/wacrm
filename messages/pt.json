@@ -376,7 +376,16 @@
       "emptyHint": "Crie respostas rápidas e scripts em Configurações — e use categorias para agrupar aqui.",
       "scriptSent": "Script enviado — {n} {n, plural, one {mensagem} other {mensagens}}!",
       "emptyReply": "Esta resposta está sem texto",
-      "sendFailed": "Falha ao enviar"
+      "sendFailed": "Falha ao enviar",
+      "newReply": "Nova resposta",
+      "manageScripts": "Gerenciar scripts (sequências com mídia)",
+      "newTitlePlaceholder": "Nome (ex.: Preço notebook)",
+      "newCategoryPlaceholder": "Categoria (ex.: VENDAS)",
+      "newTextPlaceholder": "Texto da resposta…",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "newSaved": "Resposta salva!",
+      "newValidation": "Preencha o nome e o texto."
     }
   },
   "Contacts": {

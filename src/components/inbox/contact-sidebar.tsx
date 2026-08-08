@@ -207,7 +207,11 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
 
   return (
     <div className="flex h-full w-70 flex-col border-l border-border bg-card">
-      <ScrollArea className="flex-1">
+      {/* `min-h-0` é obrigatório: um filho de coluna flex nasce com
+          min-height:auto e cresce ALÉM do container em vez de rolar —
+          era por isso que a lateral cortava os últimos campos (ficha,
+          OSs, notas) sem barra de rolagem. */}
+      <ScrollArea className="min-h-0 flex-1">
         <div className="p-4">
           {/* Radar de Leads — o resumo que a IA montou desta conversa.
               Fica no topo: é o que responde "quem é esse cliente e em

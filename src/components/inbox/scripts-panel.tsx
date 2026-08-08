@@ -11,19 +11,24 @@
 // Busca filtra as duas; um clique envia na conversa aberta.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
+  Check,
   ChevronDown,
   Clapperboard,
   Loader2,
+  Plus,
   Search,
   Send,
   X,
   Zap,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 interface PanelItem {
@@ -56,6 +61,7 @@ export function ScriptsPanel({
   const [search, setSearch] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const { accountId } = useAuth();
 
   const fetchItems = useCallback(async () => {
     const [repliesRes, scriptsRes] = await Promise.all([
@@ -94,6 +100,55 @@ export function ScriptsPanel({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchItems();
   }, [fetchItems]);
+
+  // Criação rápida sem sair da conversa.
+  const [creating, setCreating] = useState(false);
+  const [savingNew, setSavingNew] = useState(false);
+  const [form, setForm] = useState({ title: '', categoria: '', texto: '' });
+
+  /** Categorias já em uso — vira autocomplete no campo. */
+  const categoriasExistentes = useMemo(
+    () =>
+      [...new Set(items.map((i) => i.categoria))]
+        .filter((c) => c && c !== SEM_CATEGORIA)
+        .sort(),
+    [items],
+  );
+
+  const saveQuickReply = useCallback(async () => {
+    if (!form.title.trim() || !form.texto.trim()) {
+      toast.error(t('newValidation'));
+      return;
+    }
+    if (!accountId) return;
+    setSavingNew(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) throw new Error(t('sendFailed'));
+
+      const { error } = await supabase.from('quick_replies').insert({
+        account_id: accountId,
+        user_id: userId,
+        title: form.title.trim(),
+        kind: 'text',
+        content_text: form.texto.trim(),
+        categoria: form.categoria.trim() || null,
+      });
+      if (error) throw new Error(error.message);
+      toast.success(t('newSaved'));
+      setCreating(false);
+      setForm({ title: '', categoria: '', texto: '' });
+      void fetchItems();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('sendFailed'));
+    } finally {
+      setSavingNew(false);
+    }
+  }, [form, accountId, supabase, t, fetchItems]);
+
 
   /** Agrupa por categoria, com os sem-categoria por último. */
   const grupos = useMemo(() => {
@@ -162,7 +217,7 @@ export function ScriptsPanel({
         </button>
       </div>
 
-      <div className="border-b border-border p-2">
+      <div className="space-y-2 border-b border-border p-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -172,6 +227,83 @@ export function ScriptsPanel({
             className="h-8 border-border bg-muted pl-8 text-xs text-foreground"
           />
         </div>
+
+        {/* Criar sem sair da conversa (048): o atendente acabou de
+            escrever uma resposta boa? Salva ali mesmo. Sequências com
+            mídia continuam em Configurações → Scripts. */}
+        {creating ? (
+          <div className="space-y-1.5 rounded-md border border-border bg-muted/50 p-2">
+            <Input
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder={t('newTitlePlaceholder')}
+              className="h-7 border-border bg-card text-xs text-foreground"
+            />
+            <Input
+              value={form.categoria}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, categoria: e.target.value }))
+              }
+              placeholder={t('newCategoryPlaceholder')}
+              list="scripts-panel-categorias"
+              className="h-7 border-border bg-card text-xs text-foreground"
+            />
+            <datalist id="scripts-panel-categorias">
+              {categoriasExistentes.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+            <Textarea
+              value={form.texto}
+              onChange={(e) => setForm((f) => ({ ...f, texto: e.target.value }))}
+              rows={3}
+              placeholder={t('newTextPlaceholder')}
+              className="border-border bg-card text-xs text-foreground"
+            />
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => void saveQuickReply()}
+                disabled={savingNew}
+                className="flex flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {savingNew ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                {t('save')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreating(false)}
+                className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setForm({ title: '', categoria: '', texto: '' });
+                setCreating(true);
+              }}
+              className="flex flex-1 items-center justify-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              <Plus className="h-3 w-3" /> {t('newReply')}
+            </button>
+            <Link
+              href="/settings?tab=scripts"
+              title={t('manageScripts')}
+              className="flex items-center justify-center rounded-md border border-dashed border-border px-2 py-1 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              <Clapperboard className="h-3 w-3" />
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
