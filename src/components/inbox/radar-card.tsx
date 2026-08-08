@@ -17,10 +17,47 @@ import {
   Sun,
   HelpCircle,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { formatMediumDateTime } from '@/lib/app-locale';
 import { cn } from '@/lib/utils';
 
 type Temperatura = 'quente' | 'morno' | 'frio' | 'indefinido';
+type Intencao =
+  | 'compra'
+  | 'assistencia'
+  | 'orcamento'
+  | 'informacao'
+  | 'pos_venda'
+  | 'outro'
+  | 'indefinido';
+
+const TEMPERATURAS: Temperatura[] = ['quente', 'morno', 'frio', 'indefinido'];
+const INTENCOES: Intencao[] = [
+  'compra',
+  'assistencia',
+  'orcamento',
+  'informacao',
+  'pos_venda',
+  'outro',
+  'indefinido',
+];
+
+/** Emoji por intenção — leitura instantânea do tipo de atendimento. */
+const INTENCAO_EMOJI: Record<Intencao, string> = {
+  compra: '🛒',
+  assistencia: '🔧',
+  orcamento: '🧾',
+  informacao: 'ℹ️',
+  pos_venda: '🤝',
+  outro: '💬',
+  indefinido: '❓',
+};
 
 interface Momento {
   em: string;
@@ -30,6 +67,7 @@ interface Momento {
 
 interface InsightRow {
   temperatura: Temperatura;
+  intencao: Intencao;
   interesse: string | null;
   resumo: string | null;
   momentos: Momento[] | null;
@@ -77,12 +115,13 @@ export function RadarCard({ conversationId }: { conversationId: string }) {
   const t = useTranslations('Inbox.radar');
   const supabase = createClient();
   const [insight, setInsight] = useState<InsightRow | null>(null);
+  const [saving, setSaving] = useState<'temperatura' | 'intencao' | null>(null);
 
   const fetchInsight = useCallback(async () => {
     const { data } = await supabase
       .from('conversation_insights')
       .select(
-        'temperatura, interesse, resumo, momentos, proximo_contato_em, proximo_contato_motivo, ultima_analise_em',
+        'temperatura, intencao, interesse, resumo, momentos, proximo_contato_em, proximo_contato_motivo, ultima_analise_em',
       )
       .eq('conversation_id', conversationId)
       .maybeSingle();
@@ -116,6 +155,34 @@ export function RadarCard({ conversationId }: { conversationId: string }) {
     };
   }, [supabase, conversationId, fetchInsight]);
 
+  /**
+   * Correção humana (047): o atendente discorda, ajusta aqui, e a
+   * escolha (a) fixa o campo contra a IA, (b) reetiqueta o contato e
+   * (c) vira exemplo no prompt das próximas análises da conta.
+   */
+  async function classify(campo: 'temperatura' | 'intencao', valor: string) {
+    if (!insight || insight[campo] === valor) return;
+    const anterior = insight[campo];
+    setInsight({ ...insight, [campo]: valor } as InsightRow);
+    setSaving(campo);
+    try {
+      const res = await fetch(`/api/radar/${conversationId}/classify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campo, valor }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? 'erro');
+      toast.success(t('corrected'));
+    } catch {
+      setInsight((prev) =>
+        prev ? ({ ...prev, [campo]: anterior } as InsightRow) : prev,
+      );
+      toast.error(t('correctFailed'));
+    } finally {
+      setSaving(null);
+    }
+  }
+
   if (!insight) return null;
 
   const meta = TEMPERATURA_META[insight.temperatura] ?? TEMPERATURA_META.indefinido;
@@ -128,15 +195,58 @@ export function RadarCard({ conversationId }: { conversationId: string }) {
         <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           <Radar className="h-3 w-3 text-primary" /> {t('title')}
         </span>
-        <span
-          className={cn(
-            'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize',
-            meta.chip,
-          )}
-        >
-          <Icon className="h-3 w-3" />
-          {t(`temperatura.${insight.temperatura}`)}
-        </span>
+
+        <div className="flex items-center gap-1">
+          {/* Intenção — o QUE a pessoa quer (047). Clicável: corrigir
+              ensina o Radar. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={saving !== null}
+              title={t('changeIntent')}
+              className="flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <span>{INTENCAO_EMOJI[insight.intencao] ?? '❓'}</span>
+              {t(`intencao.${insight.intencao}`)}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="border-border bg-popover">
+              {INTENCOES.map((op) => (
+                <DropdownMenuItem
+                  key={op}
+                  onClick={() => void classify('intencao', op)}
+                  className={cn(op === insight.intencao && 'text-primary')}
+                >
+                  <span className="mr-2">{INTENCAO_EMOJI[op]}</span>
+                  {t(`intencao.${op}`)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={saving !== null}
+              title={t('changeTemperature')}
+              className={cn(
+                'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize transition-opacity hover:opacity-80',
+                meta.chip,
+              )}
+            >
+              <Icon className="h-3 w-3" />
+              {t(`temperatura.${insight.temperatura}`)}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="border-border bg-popover">
+              {TEMPERATURAS.map((op) => (
+                <DropdownMenuItem
+                  key={op}
+                  onClick={() => void classify('temperatura', op)}
+                  className={cn(op === insight.temperatura && 'text-primary')}
+                >
+                  {t(`temperatura.${op}`)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {insight.interesse && (

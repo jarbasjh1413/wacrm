@@ -41,7 +41,8 @@
     "menuSignOut": "Sair",
     "primaryNav": "Principal",
     "scheduled": "Agendadas",
-    "followups": "Follow-ups"
+    "followups": "Follow-ups",
+    "jornada": "Jornada"
   },
   "Header": {
     "dashboard": "Painel",
@@ -344,7 +345,20 @@
         "frio": "Frio",
         "indefinido": "Analisando"
       },
-      "nextContact": "Retomar em {date}"
+      "nextContact": "Retomar em {date}",
+      "changeTemperature": "Corrigir temperatura (ensina o Radar)",
+      "changeIntent": "Corrigir tipo de atendimento (ensina o Radar)",
+      "corrected": "Classificação corrigida — o Radar aprendeu.",
+      "correctFailed": "Falha ao salvar a correção",
+      "intencao": {
+        "compra": "Compra",
+        "assistencia": "Assistência",
+        "orcamento": "Orçamento",
+        "informacao": "Informação",
+        "pos_venda": "Pós-venda",
+        "outro": "Outro",
+        "indefinido": "A definir"
+      }
     }
   },
   "Contacts": {
@@ -2270,6 +2284,40 @@
       "auto_sent": "Automático",
       "discarded": "Descartado",
       "approved": "Aprovado"
+    }
+  },
+  "Jornada": {
+    "title": "Jornada",
+    "subtitle": "A memória de cada lead: o que a IA entendeu, as ordens de serviço e os follow-ups — em ordem cronológica.",
+    "empty": "Nenhum lead analisado ainda",
+    "emptyHint": "O Radar analisa as conversas automaticamente. Assim que a primeira for lida, ela aparece aqui.",
+    "searchPlaceholder": "Buscar por nome, telefone ou interesse…",
+    "pickLead": "Escolha um lead para ver a linha do tempo",
+    "noEvents": "Ainda não há eventos registrados",
+    "noSummary": "Sem resumo ainda",
+    "openChat": "Abrir conversa",
+    "nextContact": "Retomar em {date}",
+    "temperatura": {
+      "quente": "Quentes",
+      "morno": "Mornos",
+      "frio": "Frios",
+      "indefinido": "A definir"
+    },
+    "intencao": {
+      "compra": "Compra",
+      "assistencia": "Assistência",
+      "orcamento": "Orçamento",
+      "informacao": "Informação",
+      "pos_venda": "Pós-venda",
+      "outro": "Outro",
+      "indefinido": "A definir"
+    },
+    "cenarios": {
+      "equipamento_pronto": "Follow-up: equipamento pronto",
+      "pos_venda": "Follow-up: pós-venda",
+      "orcamento_sem_resposta": "Follow-up: orçamento sem resposta",
+      "lead_frio": "Follow-up: lead frio",
+      "promessa": "Follow-up: retorno combinado"
     }
   }
 }

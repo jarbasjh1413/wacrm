@@ -41,7 +41,8 @@
     "menuSignOut": "Cerrar sesión",
     "primaryNav": "Principal",
     "scheduled": "Programados",
-    "followups": "Seguimientos"
+    "followups": "Seguimientos",
+    "jornada": "Recorrido"
   },
   "Header": {
     "dashboard": "Panel",
@@ -344,7 +345,20 @@
         "frio": "Frío",
         "indefinido": "Analizando"
       },
-      "nextContact": "Retomar el {date}"
+      "nextContact": "Retomar el {date}",
+      "changeTemperature": "Corregir temperatura",
+      "changeIntent": "Corregir tipo de atención",
+      "corrected": "Clasificación corregida.",
+      "correctFailed": "Error al guardar",
+      "intencao": {
+        "compra": "Compra",
+        "assistencia": "Reparación",
+        "orcamento": "Presupuesto",
+        "informacao": "Información",
+        "pos_venda": "Posventa",
+        "outro": "Otro",
+        "indefinido": "Por definir"
+      }
     }
   },
   "Contacts": {
@@ -2234,6 +2248,40 @@
       "auto_sent": "Automático",
       "discarded": "Descartado",
       "approved": "Aprobado"
+    }
+  },
+  "Jornada": {
+    "title": "Recorrido",
+    "subtitle": "La memoria de cada lead: lo que la IA entendió, órdenes de servicio y seguimientos.",
+    "empty": "Ningún lead analizado aún",
+    "emptyHint": "El Radar analiza las conversaciones automáticamente.",
+    "searchPlaceholder": "Buscar por nombre, teléfono o interés…",
+    "pickLead": "Elige un lead para ver la línea de tiempo",
+    "noEvents": "Aún no hay eventos",
+    "noSummary": "Sin resumen",
+    "openChat": "Abrir chat",
+    "nextContact": "Retomar el {date}",
+    "temperatura": {
+      "quente": "Calientes",
+      "morno": "Tibios",
+      "frio": "Fríos",
+      "indefinido": "Por definir"
+    },
+    "intencao": {
+      "compra": "Compra",
+      "assistencia": "Reparación",
+      "orcamento": "Presupuesto",
+      "informacao": "Información",
+      "pos_venda": "Posventa",
+      "outro": "Otro",
+      "indefinido": "Por definir"
+    },
+    "cenarios": {
+      "equipamento_pronto": "Seguimiento: equipo listo",
+      "pos_venda": "Seguimiento: posventa",
+      "orcamento_sem_resposta": "Seguimiento: presupuesto sin respuesta",
+      "lead_frio": "Seguimiento: lead frío",
+      "promessa": "Seguimiento: retorno acordado"
     }
   }
 }

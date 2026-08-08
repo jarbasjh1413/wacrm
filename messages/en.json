@@ -41,7 +41,8 @@
     "menuSignOut": "Sign out",
     "primaryNav": "Primary",
     "scheduled": "Scheduled",
-    "followups": "Follow-ups"
+    "followups": "Follow-ups",
+    "jornada": "Journey"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -344,7 +345,20 @@
         "frio": "Cold",
         "indefinido": "Analyzing"
       },
-      "nextContact": "Follow up on {date}"
+      "nextContact": "Follow up on {date}",
+      "changeTemperature": "Fix temperature (teaches the Radar)",
+      "changeIntent": "Fix service type (teaches the Radar)",
+      "corrected": "Classification fixed — the Radar learned.",
+      "correctFailed": "Failed to save the correction",
+      "intencao": {
+        "compra": "Purchase",
+        "assistencia": "Repair",
+        "orcamento": "Quote",
+        "informacao": "Info",
+        "pos_venda": "After-sales",
+        "outro": "Other",
+        "indefinido": "TBD"
+      }
     }
   },
   "Contacts": {
@@ -2270,6 +2284,40 @@
       "auto_sent": "Automatic",
       "discarded": "Discarded",
       "approved": "Approved"
+    }
+  },
+  "Jornada": {
+    "title": "Journey",
+    "subtitle": "Each lead's memory: what the AI understood, service orders and follow-ups — in chronological order.",
+    "empty": "No leads analyzed yet",
+    "emptyHint": "The Radar analyzes conversations automatically.",
+    "searchPlaceholder": "Search by name, phone or interest…",
+    "pickLead": "Pick a lead to see the timeline",
+    "noEvents": "No events recorded yet",
+    "noSummary": "No summary yet",
+    "openChat": "Open chat",
+    "nextContact": "Follow up on {date}",
+    "temperatura": {
+      "quente": "Hot",
+      "morno": "Warm",
+      "frio": "Cold",
+      "indefinido": "TBD"
+    },
+    "intencao": {
+      "compra": "Purchase",
+      "assistencia": "Repair",
+      "orcamento": "Quote",
+      "informacao": "Info",
+      "pos_venda": "After-sales",
+      "outro": "Other",
+      "indefinido": "TBD"
+    },
+    "cenarios": {
+      "equipamento_pronto": "Follow-up: equipment ready",
+      "pos_venda": "Follow-up: after-sales",
+      "orcamento_sem_resposta": "Follow-up: unanswered quote",
+      "lead_frio": "Follow-up: cold lead",
+      "promessa": "Follow-up: agreed return"
     }
   }
 }

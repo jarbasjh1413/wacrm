@@ -107,6 +107,26 @@ describe('parseRadarAnalysis', () => {
     expect(parseRadarAnalysis('{quebrado', NOW)).toBeNull()
   })
 
+  it('lê a intenção do atendimento', () => {
+    const result = parseRadarAnalysis(
+      JSON.stringify({
+        temperatura: 'quente',
+        intencao: 'assistencia',
+        momentos_novos: [],
+      }),
+      NOW,
+    )
+    expect(result?.intencao).toBe('assistencia')
+  })
+
+  it('cai para indefinido quando a intenção vem fora do vocabulário', () => {
+    const result = parseRadarAnalysis(
+      JSON.stringify({ temperatura: 'frio', intencao: 'reclamacao', momentos_novos: [] }),
+      NOW,
+    )
+    expect(result?.intencao).toBe('indefinido')
+  })
+
   it('só escala com o booleano verdadeiro (não com "true" texto)', () => {
     const strict = parseRadarAnalysis(
       JSON.stringify({ temperatura: 'quente', escalar_humano: 'true', momentos_novos: [] }),

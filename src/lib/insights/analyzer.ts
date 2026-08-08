@@ -27,6 +27,31 @@ import { logAiUsage } from '@/lib/ai/usage'
 
 export type Temperatura = 'quente' | 'morno' | 'frio' | 'indefinido'
 
+/**
+ * O QUE a pessoa quer (047) — eixo independente da temperatura. Dá para
+ * ter alguém quente de assistência (equipamento parado, quer consertar
+ * hoje) e morno de compra: cada intenção pede um caminho diferente de
+ * atendimento.
+ */
+export type Intencao =
+  | 'compra'
+  | 'assistencia'
+  | 'orcamento'
+  | 'informacao'
+  | 'pos_venda'
+  | 'outro'
+  | 'indefinido'
+
+const INTENCOES: readonly Intencao[] = [
+  'compra',
+  'assistencia',
+  'orcamento',
+  'informacao',
+  'pos_venda',
+  'outro',
+  'indefinido',
+]
+
 export type MomentoTipo =
   | 'promessa_data'
   | 'objecao'
@@ -44,6 +69,7 @@ export interface Momento {
 /** O que a IA devolve por conversa analisada. */
 export interface RadarAnalysis {
   temperatura: Temperatura
+  intencao: Intencao
   interesse: string | null
   resumo: string | null
   momentos_novos: Momento[]
@@ -227,11 +253,14 @@ async function analyzeConversation(
 
   const { data: previous } = await db
     .from('conversation_insights')
-    .select('temperatura, interesse, resumo, momentos, proximo_contato_em')
+    .select(
+      'temperatura, intencao, interesse, resumo, momentos, proximo_contato_em, temperatura_fixada_em, intencao_fixada_em',
+    )
     .eq('conversation_id', conv.id)
     .maybeSingle()
 
-  const systemPrompt = buildRadarPrompt(settings, previous, now)
+  const correcoes = await buildCorrectionsBlock(db, accountId)
+  const systemPrompt = buildRadarPrompt(settings, previous, now, correcoes)
 
   const { text, usage } = await generateReply({
     config: aiConfig,
@@ -261,7 +290,25 @@ async function analyzeConversation(
   const analysis = parseRadarAnalysis(text, now)
   if (!analysis) {
     result.erros++
-    console.error(`[radar] resposta ilegível da IA na conversa ${conv.id}`)
+    // Sem o texto cru, "resposta ilegível" é um beco sem saída — a
+    // causa quase sempre está no fim (JSON cortado pelo teto de tokens).
+    console.error(
+      `[radar] resposta ilegível da IA na conversa ${conv.id} (${text.length} chars): ${text.slice(0, 200)}…${text.slice(-200)}`,
+    )
+    // Marca como analisada mesmo assim: falha de formatação costuma ser
+    // transitória, mas sem isso a MESMA conversa voltaria a cada tick
+    // queimando tokens para sempre. O próximo recado do cliente reabre
+    // a análise naturalmente.
+    await db.from('conversation_insights').upsert(
+      {
+        account_id: accountId,
+        conversation_id: conv.id,
+        contact_id: conv.contactId,
+        ultima_analise_em: now.toISOString(),
+        ultima_mensagem_analisada_em: conv.lastMessageAt,
+      },
+      { onConflict: 'conversation_id' },
+    )
     return
   }
 
@@ -279,7 +326,12 @@ async function analyzeConversation(
       account_id: accountId,
       conversation_id: conv.id,
       contact_id: conv.contactId,
-      temperatura: analysis.temperatura,
+      // Classificação corrigida por gente é soberana: a IA para de
+      // sobrescrever aquele campo (047) e segue cuidando do resto.
+      ...(previous?.temperatura_fixada_em
+        ? {}
+        : { temperatura: analysis.temperatura }),
+      ...(previous?.intencao_fixada_em ? {} : { intencao: analysis.intencao }),
       interesse: analysis.interesse,
       resumo: analysis.resumo,
       momentos,
@@ -309,9 +361,16 @@ async function analyzeConversation(
 
   // Ações — nenhuma delas pode derrubar a análise já gravada.
   if (conv.contactId) {
-    await applyTemperatureTag(db, accountId, conv.contactId, analysis.temperatura).catch(
-      (err) => console.error('[radar] tag de temperatura falhou:', err),
-    )
+    const temperaturaFinal = previous?.temperatura_fixada_em
+      ? ((previous.temperatura as Temperatura) ?? analysis.temperatura)
+      : analysis.temperatura
+    const intencaoFinal = previous?.intencao_fixada_em
+      ? ((previous.intencao as Intencao) ?? analysis.intencao)
+      : analysis.intencao
+    await applyRadarTags(db, accountId, conv.contactId, {
+      temperatura: temperaturaFinal,
+      intencao: intencaoFinal,
+    }).catch((err) => console.error('[radar] etiquetagem falhou:', err))
   }
   if (analysis.escalar_humano) {
     await escalateToHuman(db, accountId, conv.id, analysis).catch((err) =>
@@ -326,8 +385,14 @@ async function analyzeConversation(
 
 function buildRadarPrompt(
   settings: RadarSettings,
-  previous: { temperatura?: string; interesse?: string | null; resumo?: string | null } | null,
+  previous: {
+    temperatura?: string
+    intencao?: string
+    interesse?: string | null
+    resumo?: string | null
+  } | null,
   now: Date,
+  correcoes: string,
 ): string {
   const hoje = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
   const diaSemana = now.toLocaleDateString('pt-BR', {
@@ -347,12 +412,24 @@ function buildRadarPrompt(
     '- INDEFINIDO: não há sinal suficiente para classificar.',
     '',
     previous
-      ? `DOSSIÊ ANTERIOR (atualize, não repita):\n- temperatura: ${previous.temperatura}\n- interesse: ${previous.interesse ?? '—'}\n- resumo: ${previous.resumo ?? '—'}\n`
+      ? `DOSSIÊ ANTERIOR (atualize, não repita):\n- temperatura: ${previous.temperatura}\n- intenção: ${previous.intencao ?? '—'}\n- interesse: ${previous.interesse ?? '—'}\n- resumo: ${previous.resumo ?? '—'}\n`
       : 'Este lead ainda não tem dossiê — monte o primeiro.\n',
     `HOJE É ${diaSemana}, ${hoje} (fuso de Brasília). Use esta data para resolver referências como "dia 20", "semana que vem", "sábado".`,
     '',
+    'TIPOS DE ATENDIMENTO (intenção) — cada um tem um caminho diferente na loja:',
+    '- compra: quer comprar um equipamento (notebook, PC, periférico).',
+    '- assistencia: tem um equipamento com defeito e quer consertar/trazer para a oficina.',
+    '- orcamento: quer saber quanto custa um serviço ou reparo específico.',
+    '- informacao: dúvida geral (horário, endereço, se trabalham com tal marca, formas de pagamento) sem intenção clara ainda.',
+    '- pos_venda: já é cliente e está voltando (garantia, revisão, dúvida sobre algo que comprou/consertou).',
+    '- outro: não é atendimento comercial (conversa pessoal, fornecedor, grupo, spam).',
+    '- indefinido: sem sinal suficiente.',
+    'ATENÇÃO: temperatura e intenção são independentes. Alguém pode ser QUENTE de assistencia (equipamento parado, quer resolver hoje) e não ter nada a ver com compra.',
+    '',
+    correcoes,
     'O QUE EXTRAIR:',
     '- temperatura: aplique os critérios acima.',
+    '- intencao: escolha UM dos tipos de atendimento acima.',
     '- interesse: em UMA frase, o que o cliente quer (ex.: "notebook gamer até R$ 3.500 para produção musical"). null se não der para saber.',
     '- resumo: 1 a 3 frases sobre onde a negociação está AGORA.',
     '- momentos_novos: fatos NOVOS e relevantes ditos pelo cliente (nunca repita o que já está no dossiê anterior). Tipos: promessa_data (deu data/prazo), objecao (preço alto, precisa pensar, vai comparar), orcamento (quanto pode pagar/parcelar), interesse (o que procura), pessoal (contexto útil: profissão, uso, família). Texto curto, em terceira pessoa.',
@@ -360,10 +437,41 @@ function buildRadarPrompt(
     '- escalar_humano: true quando o lead ESQUENTOU e um atendente deve assumir AGORA (ex.: "consegui o dinheiro", "vou aí hoje", "pode separar que eu levo", pediu para fechar). false no resto.',
     '',
     'RESPONDA APENAS com JSON válido, sem markdown, neste formato:',
-    '{"temperatura":"quente|morno|frio|indefinido","interesse":"texto ou null","resumo":"texto ou null","momentos_novos":[{"tipo":"promessa_data","texto":"disse que compra dia 20"}],"proximo_contato":{"quando":"2026-08-20T13:00:00Z","motivo":"cliente disse que compra no dia 20"},"escalar_humano":false,"escalar_motivo":null}',
+    '{"temperatura":"quente|morno|frio|indefinido","intencao":"compra|assistencia|orcamento|informacao|pos_venda|outro|indefinido","interesse":"texto ou null","resumo":"texto ou null","momentos_novos":[{"tipo":"promessa_data","texto":"disse que compra dia 20"}],"proximo_contato":{"quando":"2026-08-20T13:00:00Z","motivo":"cliente disse que compra no dia 20"},"escalar_humano":false,"escalar_motivo":null}',
   ]
     .filter(Boolean)
     .join('\n')
+}
+
+/**
+ * Bloco de aprendizado: as últimas correções que os atendentes fizeram
+ * viram exemplos no prompt. É como o Radar aprende o jeito da casa sem
+ * ninguém escrever prompt — "IA e humano chegando num consenso" (047).
+ */
+async function buildCorrectionsBlock(
+  db: SupabaseClient,
+  accountId: string,
+): Promise<string> {
+  const { data } = await db
+    .from('radar_corrections')
+    .select('campo, valor_ia, valor_humano, contexto')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false })
+    .limit(12)
+  if (!data || data.length === 0) return ''
+
+  const linhas = data
+    .map(
+      (c) =>
+        `- Numa conversa assim${c.contexto ? ` (${String(c.contexto).slice(0, 120)})` : ''}, você classificou ${c.campo} como "${c.valor_ia}", mas o certo para esta loja era "${c.valor_humano}".`,
+    )
+    .join('\n')
+
+  return [
+    'CORREÇÕES ANTERIORES DA EQUIPE — aprenda com elas, elas valem mais que os critérios genéricos:',
+    linhas,
+    '',
+  ].join('\n')
 }
 
 // ---------------------------------------------------------------------------
@@ -394,6 +502,11 @@ export function parseRadarAnalysis(
     ['quente', 'morno', 'frio', 'indefinido'] as const
   ).includes(temperaturaRaw as Temperatura)
     ? (temperaturaRaw as Temperatura)
+    : 'indefinido'
+
+  const intencaoRaw = String(parsed.intencao ?? '').toLowerCase()
+  const intencao: Intencao = INTENCOES.includes(intencaoRaw as Intencao)
+    ? (intencaoRaw as Intencao)
     : 'indefinido'
 
   const nowIso = now.toISOString()
@@ -441,6 +554,7 @@ export function parseRadarAnalysis(
 
   return {
     temperatura,
+    intencao,
     interesse: asText(parsed.interesse),
     resumo: asText(parsed.resumo),
     momentos_novos,
@@ -471,78 +585,118 @@ export function normalizeMomentos(raw: unknown): Momento[] {
 // ---------------------------------------------------------------------------
 // Ações
 
-const TEMPERATURE_TAGS: Record<Exclude<Temperatura, 'indefinido'>, { name: string; color: string }> =
-  {
-    quente: { name: 'quente', color: '#ef4444' },
-    morno: { name: 'morno', color: '#f59e0b' },
-    frio: { name: 'frio', color: '#38bdf8' },
-  }
+/**
+ * Vocabulário de etiquetas que o Radar mantém sozinho. Dois grupos
+ * EXCLUSIVOS entre si (entra uma, saem as irmãs) e independentes entre
+ * grupos — dá para ser "quente" + "assistencia" ao mesmo tempo.
+ * `posicao` define a ordem dos chips de funil no inbox (046).
+ */
+const RADAR_TAG_GROUPS = {
+  temperatura: {
+    quente: { name: 'quente', color: '#ef4444', posicao: 10 },
+    morno: { name: 'morno', color: '#f59e0b', posicao: 20 },
+    frio: { name: 'frio', color: '#38bdf8', posicao: 30 },
+  } as Record<string, { name: string; color: string; posicao: number }>,
+  intencao: {
+    compra: { name: 'compra', color: '#22c55e', posicao: 110 },
+    assistencia: { name: 'assistência', color: '#a855f7', posicao: 120 },
+    orcamento: { name: 'orçamento', color: '#0ea5e9', posicao: 130 },
+    informacao: { name: 'informação', color: '#94a3b8', posicao: 140 },
+    pos_venda: { name: 'pós-venda', color: '#14b8a6', posicao: 150 },
+  } as Record<string, { name: string; color: string; posicao: number }>,
+}
 
 /**
- * Reflete a temperatura como tag do contato — assim ela aparece na
- * lateral, nos filtros do inbox e nos públicos de transmissão. Troca
- * exclusiva: entra uma, saem as outras duas.
+ * Reflete temperatura e intenção como etiquetas do contato — assim
+ * aparecem na lateral, viram chips de funil no inbox e servem de
+ * público para transmissões. Valores fora do vocabulário
+ * ('indefinido', 'outro') apenas limpam as etiquetas do grupo.
  */
-async function applyTemperatureTag(
+async function applyRadarTags(
   db: SupabaseClient,
   accountId: string,
   contactId: string,
-  temperatura: Temperatura,
+  values: { temperatura: Temperatura; intencao: Intencao },
 ): Promise<void> {
-  const names = Object.values(TEMPERATURE_TAGS).map((t) => t.name)
-  const { data: existingTags } = await db
-    .from('tags')
-    .select('id, name')
-    .eq('account_id', accountId)
-    .in('name', names)
+  for (const [grupo, vocabulario] of Object.entries(RADAR_TAG_GROUPS)) {
+    const valor = grupo === 'temperatura' ? values.temperatura : values.intencao
+    const alvo = vocabulario[valor]
+    const nomes = Object.values(vocabulario).map((t) => t.name)
 
-  const byName = new Map(
-    (existingTags ?? []).map((t) => [t.name as string, t.id as string]),
-  )
-  const otherIds = [...byName.entries()]
-    .filter(([name]) => name !== temperatura)
-    .map(([, id]) => id)
-  if (otherIds.length > 0) {
+    const { data: existentes } = await db
+      .from('tags')
+      .select('id, name')
+      .eq('account_id', accountId)
+      .in('name', nomes)
+
+    const porNome = new Map(
+      (existentes ?? []).map((t) => [t.name as string, t.id as string]),
+    )
+
+    // Sai qualquer etiqueta irmã (inclusive a antiga, na troca).
+    const remover = [...porNome.entries()]
+      .filter(([name]) => name !== alvo?.name)
+      .map(([, id]) => id)
+    if (remover.length > 0) {
+      await db
+        .from('contact_tags')
+        .delete()
+        .eq('contact_id', contactId)
+        .in('tag_id', remover)
+    }
+
+    if (!alvo) continue
+
+    let tagId = porNome.get(alvo.name)
+    if (!tagId) {
+      // tags.user_id é NOT NULL — usa qualquer membro como autor.
+      const { data: owner } = await db
+        .from('profiles')
+        .select('user_id')
+        .eq('account_id', accountId)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (!owner?.user_id) continue
+      const { data: criada } = await db
+        .from('tags')
+        .insert({
+          account_id: accountId,
+          user_id: owner.user_id,
+          name: alvo.name,
+          color: alvo.color,
+          // Nasce no funil, na posição do grupo (046).
+          is_funnel_stage: true,
+          funnel_position: alvo.posicao,
+        })
+        .select('id')
+        .single()
+      tagId = criada?.id as string | undefined
+    }
+    if (!tagId) continue
+
     await db
       .from('contact_tags')
-      .delete()
-      .eq('contact_id', contactId)
-      .in('tag_id', otherIds)
+      .upsert(
+        { contact_id: contactId, tag_id: tagId },
+        { onConflict: 'contact_id,tag_id', ignoreDuplicates: true },
+      )
   }
+}
 
-  if (temperatura === 'indefinido') return
-
-  let tagId = byName.get(temperatura)
-  if (!tagId) {
-    // Precisa de um dono para a linha (tags.user_id é NOT NULL).
-    const { data: owner } = await db
-      .from('profiles')
-      .select('user_id')
-      .eq('account_id', accountId)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-    if (!owner?.user_id) return
-    const { data: created } = await db
-      .from('tags')
-      .insert({
-        account_id: accountId,
-        user_id: owner.user_id,
-        name: TEMPERATURE_TAGS[temperatura].name,
-        color: TEMPERATURE_TAGS[temperatura].color,
-      })
-      .select('id')
-      .single()
-    tagId = created?.id as string | undefined
-  }
-  if (!tagId) return
-
-  await db
-    .from('contact_tags')
-    .upsert(
-      { contact_id: contactId, tag_id: tagId },
-      { onConflict: 'contact_id,tag_id', ignoreDuplicates: true },
-    )
+/**
+ * Reaplica as etiquetas do Radar com o cliente de service role — usada
+ * pela correção humana (047), que roda numa rota com sessão mas precisa
+ * do mesmo poder de criar/limpar etiquetas do analisador.
+ */
+export async function reapplyRadarTagsForConversation(
+  accountId: string,
+  contactId: string,
+  values: { temperatura: Temperatura; intencao: Intencao },
+): Promise<void> {
+  const db = admin()
+  if (!db) return
+  await applyRadarTags(db, accountId, contactId, values)
 }
 
 /** Lead esquentou: avisa a equipe no sino com o motivo e o link do chat. */
