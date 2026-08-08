@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './admin-client'
 import { loadAiConfig } from './config'
+import { featureEnabled } from '@/lib/features/guard'
 import { buildConversationContext } from './context'
 import { retrieveKnowledge } from './knowledge'
 import { generateReply } from './generate'
@@ -46,6 +47,9 @@ export async function dispatchInboundToAiReply(
 
   try {
     const db = supabaseAdmin()
+
+    // Central de Recursos (049): interruptor do bot + modo manual.
+    if (!(await featureEnabled(db, accountId, 'auto_reply'))) return
 
     const config = await loadAiConfig(db, accountId)
     if (!config || !config.autoReplyEnabled) return

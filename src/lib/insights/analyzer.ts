@@ -24,6 +24,7 @@ import { loadAiConfig } from '@/lib/ai/config'
 import { buildConversationContext } from '@/lib/ai/context'
 import { generateReply } from '@/lib/ai/generate'
 import { logAiUsage } from '@/lib/ai/usage'
+import { featureEnabled } from '@/lib/features/guard'
 
 export type Temperatura = 'quente' | 'morno' | 'frio' | 'indefinido'
 
@@ -177,6 +178,9 @@ async function scanAccount(
     criterios_frio: settingsRow?.criterios_frio ?? null,
   }
   if (!settings.radar_enabled) return
+  // Central de Recursos (049): o interruptor da tela — e o modo manual,
+  // que derruba todo automatismo de uma vez.
+  if (!(await featureEnabled(db, accountId, 'radar'))) return
 
   // requireActive: false — is_active governa o bot de auto-resposta do
   // inbox; o Radar tem o próprio interruptor.

@@ -20,6 +20,7 @@ import type {
   AssignConversationStepConfig,
 } from '@/types'
 import { supabaseAdmin } from './admin-client'
+import { featureEnabled } from '@/lib/features/guard'
 import { addContactTagIfAbsent } from '@/lib/contacts/tag-write'
 import { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from '@/lib/contacts/tag-chain'
 import { engineSendMedia } from '@/lib/flows/meta-send'
@@ -69,6 +70,10 @@ export interface DispatchInput {
 export async function runAutomationsForTrigger(input: DispatchInput): Promise<void> {
   try {
     const db = supabaseAdmin()
+
+    // Central de Recursos (049): o interruptor de automações e o modo
+    // manual — quando desligado, nenhum gatilho dispara.
+    if (!(await featureEnabled(db, input.accountId, 'automations'))) return
 
     // Tenant isolation. `contactId` can be caller-supplied (the manual
     // POST /api/automations/engine entrypoint reads it straight from the

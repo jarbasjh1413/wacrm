@@ -76,7 +76,13 @@ reais, em ordem de probabilidade:
 2. Quebra de confiança se o cliente descobrir;
 3. LGPD/CDC; o PL 2338/2023, se aprovado, prevê sanções pesadas.
 
-**Custo de estar em conformidade: R$ 0,00** — basta avisar. Recomendação:
+**DECISÃO DO JARBAS (05/08/2026): não quer o aviso.** Registrado — é o
+negócio e a voz dele. O risco que permanece na mesa é operacional, não
+jurídico: áudio sintético em escala é padrão de spam e o WhatsApp bane
+número por isso. Revisitar quando a voz for realmente implementada
+(item 3 da ordem).
+
+Recomendação original mantida para referência:
 usar voz sintética só em conteúdo **informativo repetitivo** (como chegar na
 loja, explicação de garantia), nunca em negociação ou conversa pessoal, e com
 um aviso do tipo "áudio gravado automaticamente".

@@ -1718,7 +1718,8 @@
       "api": "Claves de API",
       "quick-replies": "Respuestas rápidas",
       "scripts": "Guiones",
-      "radar": "Radar de Leads"
+      "radar": "Radar de Leads",
+      "features": "Centro de Recursos"
     },
     "groups": {
       "account": "Cuenta",
@@ -2004,6 +2005,65 @@
       "save": "Guardar criterios",
       "saved": "Criterios guardados.",
       "saveFailed": "Error al guardar"
+    },
+    "features": {
+      "title": "Recursos automáticos",
+      "description": "Activa, desactiva y prueba cada recurso.",
+      "manualTitle": "Modo manual",
+      "manualOffDesc": "Desactiva todo lo automático de una vez.",
+      "manualOnDesc": "⚠️ Todo lo automático está DETENIDO.",
+      "manualOnToast": "Modo manual activado.",
+      "manualOffToast": "Modo manual desactivado.",
+      "test": "Probar",
+      "testOk": "¡Funcionando!",
+      "testFailed": "La prueba falló",
+      "saveFailed": "Error al guardar",
+      "lastActivity": "Última actividad: {date}",
+      "adminOnly": "Solo administradores pueden activar recursos.",
+      "health": {
+        "ok": "Funcionando",
+        "off": "Apagado",
+        "unconfigured": "Falta configurar",
+        "error": "Con problema"
+      },
+      "items": {
+        "radar": {
+          "name": "Lead Radar",
+          "desc": "Reads conversations, rates the customer and fills the profile."
+        },
+        "followup": {
+          "name": "Follow-up agent",
+          "desc": "Nudges who went silent and returns on the promised date."
+        },
+        "auto_reply": {
+          "name": "Auto-reply",
+          "desc": "The bot answers customers in the inbox on its own."
+        },
+        "automations": {
+          "name": "Automations",
+          "desc": "Simple rules: when X happens, do Y."
+        },
+        "flows": {
+          "name": "Flows",
+          "desc": "Guided conversations with buttons and lists."
+        },
+        "broadcasts": {
+          "name": "Broadcasts",
+          "desc": "Bulk sending with anti-ban pacing."
+        },
+        "scheduled": {
+          "name": "Scheduled messages",
+          "desc": "Messages set to go out later."
+        },
+        "transcription": {
+          "name": "Audio transcription",
+          "desc": "Turns received audio into text the AI can read."
+        },
+        "vision": {
+          "name": "Photo & document reading",
+          "desc": "The AI interprets photos and PDFs customers send."
+        }
+      }
     }
   },
   "Notifications": {

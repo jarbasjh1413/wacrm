@@ -14,6 +14,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { sendMessageToConversation } from './send-message'
 import { runScriptInConversation } from './script-runner'
 import { renderBroadcastMessage } from './broadcast-pacing'
+import { featureEnabled } from '@/lib/features/guard'
 
 let _admin: SupabaseClient | null = null
 function admin(): SupabaseClient {
@@ -59,6 +60,9 @@ export async function drainScheduledMessages(
   }
 
   for (const row of (due ?? []) as ScheduledRow[]) {
+    // Central de Recursos (049): modo manual segura os agendamentos —
+    // a linha fica na fila e sai quando religarem.
+    if (!(await featureEnabled(db, row.account_id, 'scheduled'))) continue
     // Marca como 'sent' ANTES do envio (claim otimista): se dois ticks
     // concorrerem, só um leva a linha — o update é condicionado ao
     // status ainda ser 'scheduled'. Em falha, vira 'failed' com motivo.

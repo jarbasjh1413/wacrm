@@ -24,6 +24,7 @@ import { retrieveKnowledge } from '@/lib/ai/knowledge'
 import { generateReply } from '@/lib/ai/generate'
 import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
 import { normalizeMomentos } from '@/lib/insights/analyzer'
+import { featureEnabled } from '@/lib/features/guard'
 
 // ---------------------------------------------------------------------------
 // Tipos e constantes
@@ -168,6 +169,8 @@ async function scanAccount(
 ): Promise<void> {
   const settings = await loadSettings(db, accountId)
   if (!settings.enabled) return
+  // Central de Recursos (049) — inclui o modo manual.
+  if (!(await featureEnabled(db, accountId, 'followup'))) return
 
   // ~2x ao dia: pula se a última varredura desta conta foi há pouco.
   if (

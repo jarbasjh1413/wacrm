@@ -1718,7 +1718,8 @@
       "api": "Chaves de API",
       "quick-replies": "Respostas rápidas",
       "scripts": "Scripts",
-      "radar": "Radar de Leads"
+      "radar": "Radar de Leads",
+      "features": "Central de Recursos"
     },
     "groups": {
       "account": "Conta",
@@ -2031,6 +2032,65 @@
       "save": "Salvar critérios",
       "saved": "Critérios salvos — a IA já usa a partir da próxima análise.",
       "saveFailed": "Falha ao salvar os critérios"
+    },
+    "features": {
+      "title": "Recursos automáticos",
+      "description": "Ligue, desligue e teste cada recurso. O que estiver desligado simplesmente não roda — nada é perdido.",
+      "manualTitle": "Modo manual",
+      "manualOffDesc": "Desligue tudo que é automático de uma vez. O CRM vira só um aplicativo onde você responde à mão.",
+      "manualOnDesc": "⚠️ Tudo que é automático está PARADO. Nenhuma mensagem sai sozinha, o Radar não analisa e as filas ficam esperando.",
+      "manualOnToast": "Modo manual ligado — nada automático vai rodar.",
+      "manualOffToast": "Modo manual desligado — os recursos ligados voltaram a rodar.",
+      "test": "Testar",
+      "testOk": "Funcionando!",
+      "testFailed": "O teste falhou",
+      "saveFailed": "Falha ao salvar",
+      "lastActivity": "Última atividade: {date}",
+      "adminOnly": "Só administradores podem ligar e desligar recursos.",
+      "health": {
+        "ok": "Funcionando",
+        "off": "Desligado",
+        "unconfigured": "Falta configurar",
+        "error": "Com problema"
+      },
+      "items": {
+        "radar": {
+          "name": "Radar de Leads",
+          "desc": "Lê as conversas, classifica o cliente, guarda os momentos e preenche a ficha."
+        },
+        "followup": {
+          "name": "Agente de follow-up",
+          "desc": "Cobra sozinho quem não respondeu e retorna na data que o cliente prometeu."
+        },
+        "auto_reply": {
+          "name": "Resposta automática",
+          "desc": "O bot responde o cliente no inbox sem intervenção humana."
+        },
+        "automations": {
+          "name": "Automações",
+          "desc": "Regras simples: quando acontecer X, faça Y."
+        },
+        "flows": {
+          "name": "Fluxos",
+          "desc": "Conversas guiadas com botões e listas."
+        },
+        "broadcasts": {
+          "name": "Transmissões",
+          "desc": "Envio em massa com as regras anti-bloqueio."
+        },
+        "scheduled": {
+          "name": "Mensagens agendadas",
+          "desc": "Mensagens marcadas para sair depois."
+        },
+        "transcription": {
+          "name": "Transcrição de áudio",
+          "desc": "Transforma os áudios recebidos em texto para a IA entender."
+        },
+        "vision": {
+          "name": "Leitura de fotos e documentos",
+          "desc": "A IA interpreta fotos e PDFs que o cliente manda."
+        }
+      }
     }
   },
   "Notifications": {

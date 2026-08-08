@@ -15,6 +15,7 @@ import { EvolutionInstances } from '@/components/settings/evolution-instances';
 import { QuickRepliesManager } from '@/components/settings/quick-replies-manager';
 import { ScriptsManager } from '@/components/settings/scripts-manager';
 import { RadarSettings } from '@/components/settings/radar-settings';
+import { FeaturesCenter } from '@/components/settings/features-center';
 import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel';
 import { DealsSettings } from '@/components/settings/deals-settings';
 import { MembersTab } from '@/components/settings/members-tab';
@@ -72,6 +73,7 @@ function SettingsPageInner() {
 
   const panel: Record<SettingsSection, ReactNode> = {
     overview: <SettingsOverview onSelect={go} />,
+    features: <FeaturesCenter />,
     profile: <ProfileForm />,
     security: <SecurityPanel />,
     appearance: <AppearancePanel />,

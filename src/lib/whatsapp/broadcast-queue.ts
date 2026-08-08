@@ -22,6 +22,7 @@ import {
   isVariantRetryableError,
 } from './engine-transport'
 import { phoneVariants, sanitizePhoneForMeta } from './phone-utils'
+import { featureEnabled } from '@/lib/features/guard'
 import {
   DEFAULT_LIMITS,
   isWithinSendWindow,
@@ -96,6 +97,11 @@ export async function drainBroadcastQueue(
 
   for (const broadcast of (due ?? []) as QueueBroadcastRow[]) {
     try {
+      // Central de Recursos (049): modo manual pausa a fila — a
+      // transmissão fica em 'sending' e retoma de onde parou.
+      if (!(await featureEnabled(db, broadcast.account_id, 'broadcasts'))) {
+        continue
+      }
       await processOne(db, broadcast, now, limitsCache, result)
     } catch (err) {
       // Nunca travar a fila: reagenda o broadcast problemático para
