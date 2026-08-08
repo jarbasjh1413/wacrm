@@ -25,6 +25,7 @@ import { generateReply } from '@/lib/ai/generate'
 import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
 import { normalizeMomentos } from '@/lib/insights/analyzer'
 import { featureEnabled } from '@/lib/features/guard'
+import { mapOsSituacao } from '@/lib/os/status-map'
 
 // ---------------------------------------------------------------------------
 // Tipos e constantes
@@ -367,7 +368,9 @@ async function detectEquipamentoPronto(
   const out: Candidate[] = []
   const states = await latestOsStates(db, accountId)
   for (const [osId, st] of states) {
-    if (st.status !== 'pronto' || !st.contact_id) continue
+    // O sistema de OS manda o NOME da coluna ('Pronto para entrega',
+    // 'Aguardando retirada'), não um slug — por isso o mapa.
+    if (mapOsSituacao(st.status) !== 'pronto' || !st.contact_id) continue
     const dias = diasDesde(st.data_evento, now)
     if (dias < settings.dias_equipamento_pronto) continue
     const conv = await conversationForContact(db, accountId, st.contact_id)
@@ -393,7 +396,7 @@ async function detectPosVenda(
   const out: Candidate[] = []
   const states = await latestOsStates(db, accountId)
   for (const [osId, st] of states) {
-    if (st.status !== 'entregue' || !st.contact_id) continue
+    if (mapOsSituacao(st.status) !== 'finalizada' || !st.contact_id) continue
     const dias = diasDesde(st.data_evento, now)
     // Janela: dispara a partir de N dias, mas não ressuscita entregas
     // muito antigas (2× N) — as tentativas/cadência seguram o meio.
@@ -421,7 +424,8 @@ async function detectOrcamentoSemResposta(
   const out: Candidate[] = []
   const states = await latestOsStates(db, accountId)
   for (const [osId, st] of states) {
-    if (st.status !== 'orcamento_enviado' || !st.contact_id) continue
+    if (mapOsSituacao(st.status) !== 'aguardando_cliente' || !st.contact_id)
+      continue
     if (diasDesde(st.data_evento, now) < settings.dias_orcamento) continue
     const conv = await conversationForContact(db, accountId, st.contact_id)
     if (!conv) continue

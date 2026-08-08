@@ -19,6 +19,7 @@ import {
   resolveAuditUserId,
   ContactError,
 } from '@/lib/api/v1/contacts';
+import { aplicaOsNoFunilDeServico } from '@/lib/os/deal-bridge';
 
 interface OsEventBody {
   os_id?: unknown;
@@ -102,6 +103,15 @@ export async function POST(request: Request) {
       console.error('[v1/os-events] insert failed:', error?.message);
       return fail('internal', 'Failed to store the event', 500);
     }
+
+    // Ponte para o funil de serviço (053). Em .catch() porque uma falha
+    // do funil jamais pode derrubar o 201 que o sistema de OS espera.
+    await aplicaOsNoFunilDeServico(ctx.supabase, {
+      accountId: ctx.accountId,
+      contactId: contact.id,
+      osId,
+      status: asTrimmedString(body.status) ?? null,
+    }).catch((err) => console.error('[v1/os-events] ponte falhou:', err));
 
     return ok(
       { event, contact: { id: contact.id, created: contact.created } },

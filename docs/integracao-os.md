@@ -40,7 +40,7 @@ Content-Type: application/json
 |---|---|---|
 | `os_id` | ✅ | Identificador da OS no sistema de origem (string). |
 | `evento` | ✅ | Livre; sugerido: `os_criada`, `status_alterado`, `os_entregue`. |
-| `status` | — | Vocabulário do sistema de OS (`pronto`, `orcamento_enviado`, `aguardando_aprovacao`, `entregue`, ...). Sem CHECK no CRM: status novos não quebram nada. |
+| `status` | ✅ na prática | **Mande o NOME da coluna do kanban**, igual ele aparece na tela: `Aguardando retirada`, `Aguardando cliente`, `Em serviço`... Ver a tabela de tradução abaixo. Sem CHECK no CRM: nome novo não quebra nada, mas também não dispara nada até ser mapeado. |
 | `cliente.telefone` | ✅ | E.164 (`+55DDDNÚMERO`). O CRM acha ou **cria** o contato por ele. |
 | `cliente.nome` | — | Usado ao criar contato novo. |
 | `equipamento` | — | Texto livre; aparece na lateral da conversa. |
@@ -126,3 +126,45 @@ e `OS_API_KEY` e a lateral consulta ao vivo (com cache curto), usando
    chegar no CRM (`os_events`) e a OS aparecer na lateral da conversa
    do cliente.
 2. Enviar payload com telefone novo → conferir que o contato foi criado.
+
+
+---
+
+## O vocabulário de `status` (conferido no código, 08/08/2026)
+
+O sistema de OS da Oficina (`Projetos/oficina-info-sistema`) **não tem enum
+de status**: as colunas do kanban são linhas na tabela `KanbanColumn`, então
+o que existe é o `name` da coluna — em português, com acento e espaço.
+
+Isso quase custou caro: o CRM comparava contra `'pronto'`, `'entregue'` e
+`'orcamento_enviado'`, que **não existem** naquele sistema. A integração
+podia ser ligada e não sairia **nenhuma** cobrança, sem nenhum erro.
+
+O tradutor vive em `src/lib/os/status-map.ts` e ignora acento, caixa e
+separador (`Aguardando Retirada`, `aguardando-retirada` e
+`AGUARDANDO_RETIRADA` são a mesma coisa).
+
+| Coluna no kanban da OS | Situação no CRM | O que o CRM faz |
+|---|---|---|
+| Aguardando recebimento | `aguardando_recebimento` | **Não move o card** — a máquina ainda está com o cliente. Continua cobrando "que dia você traz?" |
+| Orçamento a fazer | `na_bancada` | Card vai para "Máquina na loja" e trava |
+| Revisões | `na_bancada` | idem |
+| Em levantamento | `na_bancada` | idem |
+| Enviar orçamento | `na_bancada` | idem |
+| **Aguardando cliente** | `aguardando_cliente` | 💰 cobrança de **orçamento sem resposta** |
+| Autorizado | `na_bancada` | idem |
+| Em serviço | `na_bancada` | idem |
+| Aguardando peça | `na_bancada` | idem |
+| Pronto para entrega | `pronto` | 💰 cobrança de **equipamento pronto** |
+| **Aguardando retirada** | `pronto` | 💰 cobrança de **equipamento pronto** |
+| Finalizada | `finalizada` | pós-venda |
+
+Os slugs do contrato original (`pronto`, `orcamento_enviado`,
+`aguardando_aprovacao`, `entregue`) continuam aceitos — quem implementar
+pelo texto antigo não quebra.
+
+**Coluna nova?** O CRM registra o evento, espelha no card como
+`desconhecido`, escreve um aviso no log (`[os] status não mapeado: ...`) e
+**não move nada**. Marcar "chegou" cedo demais tiraria o card da fila de
+cobrança justamente quando ele ainda precisa ser cobrado. É só acrescentar
+a linha no `MAPA` do `status-map.ts`.
