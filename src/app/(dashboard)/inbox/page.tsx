@@ -13,6 +13,7 @@ import { useRealtime } from "@/hooks/use-realtime";
 import { ConversationList } from "@/components/inbox/conversation-list";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
+import { ScriptsPanel } from "@/components/inbox/scripts-panel";
 import { toast } from "sonner";
 import { WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,10 @@ function InboxPageInner() {
    * below reconciles to the stored value right after mount instead.
    */
   const [contactPanelOpen, setContactPanelOpen] = useState(true);
+  // Painel de scripts/respostas por categoria (048) — réplica do painel
+  // direito da extensão. Ocupa o lugar da lateral do contato quando
+  // aberto (a tela não comporta as duas colunas).
+  const [scriptsPanelOpen, setScriptsPanelOpen] = useState(false);
   useEffect(() => {
     try {
       const stored = localStorage.getItem(CONTACT_PANEL_STORAGE_KEY);
@@ -77,6 +82,31 @@ function InboxPageInner() {
       // localStorage can throw in private-browsing / sandboxed contexts.
     }
   }, []);
+
+  /**
+   * Envio a partir do painel de scripts (048). Vai pela mesma rota do
+   * composer; o realtime traz a mensagem de volta para o thread, então
+   * não há eco otimista aqui.
+   */
+  const handleSendTextFromPanel = useCallback(
+    async (text: string) => {
+      if (!activeConversation) return;
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversation_id: activeConversation.id,
+          message_type: "text",
+          content_text: text,
+        }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error || `HTTP ${res.status}`);
+      }
+    },
+    [activeConversation],
+  );
 
   const handleToggleContactPanel = useCallback(() => {
     setContactPanelOpen((prev) => {
@@ -623,6 +653,8 @@ function InboxPageInner() {
             onRefresh={handleManualRefresh}
             contactPanelOpen={contactPanelOpen}
             onToggleContactPanel={handleToggleContactPanel}
+            scriptsPanelOpen={scriptsPanelOpen}
+            onToggleScriptsPanel={() => setScriptsPanelOpen((prev) => !prev)}
           />
         </div>
 
@@ -630,13 +662,23 @@ function InboxPageInner() {
             agent hasn't collapsed it via the thread-header toggle (#258).
             On mobile it's always hidden (the `lg:block` below), so the
             toggle — which is itself desktop-only — never affects it. */}
-        {contactPanelOpen && (
+        {scriptsPanelOpen && activeConversation ? (
           <div className="hidden lg:block">
-            <ContactSidebar
-              contact={activeContact}
-              conversationId={activeConversation?.id ?? null}
+            <ScriptsPanel
+              conversationId={activeConversation.id}
+              onClose={() => setScriptsPanelOpen(false)}
+              onSendText={handleSendTextFromPanel}
             />
           </div>
+        ) : (
+          contactPanelOpen && (
+            <div className="hidden lg:block">
+              <ContactSidebar
+                contact={activeContact}
+                conversationId={activeConversation?.id ?? null}
+              />
+            </div>
+          )
         )}
       </div>
     </div>

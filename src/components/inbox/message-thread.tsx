@@ -25,6 +25,7 @@ import {
   ArrowLeft,
   RefreshCw,
   Phone,
+  Zap,
   PanelRightOpen,
   PanelRightClose,
 } from "lucide-react";
@@ -117,6 +118,9 @@ interface MessageThreadProps {
    * `onToggleContactPanel` is wired up.
    */
   contactPanelOpen?: boolean;
+  /** Painel de scripts/respostas por categoria (048). */
+  scriptsPanelOpen?: boolean;
+  onToggleScriptsPanel?: () => void;
   onToggleContactPanel?: () => void;
 }
 
@@ -176,6 +180,8 @@ export function MessageThread({
   onRefresh,
   contactPanelOpen,
   onToggleContactPanel,
+  scriptsPanelOpen = false,
+  onToggleScriptsPanel,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
   const tTimer = useTranslations("Inbox.sessionTimer");
@@ -952,6 +958,22 @@ export function MessageThread({
                 <Phone className="h-4 w-4" />
               </a>
             </>
+          )}
+
+          {onToggleScriptsPanel && (
+            <button
+              type="button"
+              onClick={onToggleScriptsPanel}
+              aria-label={t("scriptsPanel")}
+              title={t("scriptsPanel")}
+              aria-pressed={scriptsPanelOpen}
+              className={cn(
+                "hidden h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground lg:inline-flex",
+                scriptsPanelOpen ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              <Zap className="h-4 w-4" />
+            </button>
           )}
 
           {onToggleContactPanel && (

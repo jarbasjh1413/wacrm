@@ -196,7 +196,8 @@
       "toastAssignmentFailed": "Failed to update assignment",
       "callWhatsApp": "Call on WhatsApp (opens the official app)",
       "callPhone": "Call this number",
-      "jumpToBottom": "Jump to latest messages"
+      "jumpToBottom": "Jump to latest messages",
+      "scriptsPanel": "Scripts & replies"
     },
     "sessionTimer": {
       "expired": "Expired",
@@ -318,7 +319,9 @@
       "addNotePlaceholder": "Add a note...",
       "osOrders": "Service orders",
       "noOsOrders": "No service orders yet",
-      "osNumber": "SO {id}"
+      "osNumber": "SO {id}",
+      "profile": "Customer profile",
+      "filledByAi": "Filled by the AI from the conversation"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",
@@ -358,7 +361,22 @@
         "pos_venda": "After-sales",
         "outro": "Other",
         "indefinido": "TBD"
-      }
+      },
+      "showJourney": "See full journey",
+      "hideJourney": "Hide journey",
+      "noJourney": "No history recorded yet",
+      "followupSent": "Follow-up sent by the agent"
+    },
+    "scriptsPanel": {
+      "title": "Scripts & replies",
+      "close": "Close panel",
+      "searchPlaceholder": "Search…",
+      "uncategorized": "Uncategorized",
+      "empty": "Nothing saved yet",
+      "emptyHint": "Create quick replies and scripts in Settings.",
+      "scriptSent": "Script sent — {n} {n, plural, one {message} other {messages}}!",
+      "emptyReply": "This reply has no text",
+      "sendFailed": "Failed to send"
     }
   },
   "Contacts": {

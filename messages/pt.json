@@ -196,7 +196,8 @@
       "toastAssignmentFailed": "Falha ao atualizar a atribuição",
       "callWhatsApp": "Ligar pelo WhatsApp (abre o aplicativo oficial)",
       "callPhone": "Ligar para o número",
-      "jumpToBottom": "Ir para o fim da conversa"
+      "jumpToBottom": "Ir para o fim da conversa",
+      "scriptsPanel": "Scripts e respostas"
     },
     "sessionTimer": {
       "expired": "Expirada",
@@ -318,7 +319,9 @@
       "addNotePlaceholder": "Adicionar uma nota...",
       "osOrders": "Ordens de serviço",
       "noOsOrders": "Nenhuma OS registrada ainda",
-      "osNumber": "OS {id}"
+      "osNumber": "OS {id}",
+      "profile": "Ficha do cliente",
+      "filledByAi": "Preenchido pela IA a partir da conversa"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",
@@ -358,7 +361,22 @@
         "pos_venda": "Pós-venda",
         "outro": "Outro",
         "indefinido": "A definir"
-      }
+      },
+      "showJourney": "Ver jornada completa",
+      "hideJourney": "Ocultar jornada",
+      "noJourney": "Ainda não há histórico registrado",
+      "followupSent": "Follow-up enviado pelo agente"
+    },
+    "scriptsPanel": {
+      "title": "Scripts e respostas",
+      "close": "Fechar painel",
+      "searchPlaceholder": "Buscar…",
+      "uncategorized": "Sem categoria",
+      "empty": "Nada cadastrado ainda",
+      "emptyHint": "Crie respostas rápidas e scripts em Configurações — e use categorias para agrupar aqui.",
+      "scriptSent": "Script enviado — {n} {n, plural, one {mensagem} other {mensagens}}!",
+      "emptyReply": "Esta resposta está sem texto",
+      "sendFailed": "Falha ao enviar"
     }
   },
   "Contacts": {

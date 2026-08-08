@@ -76,6 +76,11 @@ export interface RadarAnalysis {
   proximo_contato: { quando: string; motivo: string } | null
   escalar_humano: boolean
   escalar_motivo: string | null
+  /**
+   * Ficha do cliente preenchida pela IA (048): { "Cidade": "Canoas" }.
+   * Só os campos marcados como ai_managed entram aqui.
+   */
+  campos: Record<string, string>
 }
 
 export interface RadarScanResult {
@@ -260,7 +265,14 @@ async function analyzeConversation(
     .maybeSingle()
 
   const correcoes = await buildCorrectionsBlock(db, accountId)
-  const systemPrompt = buildRadarPrompt(settings, previous, now, correcoes)
+  const camposIa = await loadAiFields(db, accountId)
+  const systemPrompt = buildRadarPrompt(
+    settings,
+    previous,
+    now,
+    correcoes,
+    buildFichaBlock(camposIa),
+  )
 
   const { text, usage } = await generateReply({
     config: aiConfig,
@@ -372,6 +384,14 @@ async function analyzeConversation(
       intencao: intencaoFinal,
     }).catch((err) => console.error('[radar] etiquetagem falhou:', err))
   }
+  if (conv.contactId && Object.keys(analysis.campos).length > 0) {
+    await fillContactFields(
+      db,
+      conv.contactId,
+      camposIa,
+      analysis.campos,
+    ).catch((err) => console.error('[radar] ficha do contato falhou:', err))
+  }
   if (analysis.escalar_humano) {
     await escalateToHuman(db, accountId, conv.id, analysis).catch((err) =>
       console.error('[radar] escalada falhou:', err),
@@ -393,6 +413,7 @@ function buildRadarPrompt(
   } | null,
   now: Date,
   correcoes: string,
+  fichaBloco: string,
 ): string {
   const hoje = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
   const diaSemana = now.toLocaleDateString('pt-BR', {
@@ -434,10 +455,11 @@ function buildRadarPrompt(
     '- resumo: 1 a 3 frases sobre onde a negociação está AGORA.',
     '- momentos_novos: fatos NOVOS e relevantes ditos pelo cliente (nunca repita o que já está no dossiê anterior). Tipos: promessa_data (deu data/prazo), objecao (preço alto, precisa pensar, vai comparar), orcamento (quanto pode pagar/parcelar), interesse (o que procura), pessoal (contexto útil: profissão, uso, família). Texto curto, em terceira pessoa.',
     '- proximo_contato: SE o cliente deu uma data ou prazo para decidir/voltar/comprar, converta para data ISO 8601 completa (use 10:00 no fuso de Brasília como horário padrão) e explique o motivo. null se não houve promessa. IMPORTANTE: só use datas FUTURAS.',
+    fichaBloco,
     '- escalar_humano: true quando o lead ESQUENTOU e um atendente deve assumir AGORA (ex.: "consegui o dinheiro", "vou aí hoje", "pode separar que eu levo", pediu para fechar). false no resto.',
     '',
     'RESPONDA APENAS com JSON válido, sem markdown, neste formato:',
-    '{"temperatura":"quente|morno|frio|indefinido","intencao":"compra|assistencia|orcamento|informacao|pos_venda|outro|indefinido","interesse":"texto ou null","resumo":"texto ou null","momentos_novos":[{"tipo":"promessa_data","texto":"disse que compra dia 20"}],"proximo_contato":{"quando":"2026-08-20T13:00:00Z","motivo":"cliente disse que compra no dia 20"},"escalar_humano":false,"escalar_motivo":null}',
+    '{"temperatura":"quente|morno|frio|indefinido","intencao":"compra|assistencia|orcamento|informacao|pos_venda|outro|indefinido","interesse":"texto ou null","resumo":"texto ou null","momentos_novos":[{"tipo":"promessa_data","texto":"disse que compra dia 20"}],"proximo_contato":{"quando":"2026-08-20T13:00:00Z","motivo":"cliente disse que compra no dia 20"},"escalar_humano":false,"escalar_motivo":null,"campos":{"Cidade":"Canoas"}}',
   ]
     .filter(Boolean)
     .join('\n')
@@ -552,6 +574,20 @@ export function parseRadarAnalysis(
       ? v.trim()
       : null
 
+  // Ficha: aceita só pares texto→texto, com valores curtos (é ficha,
+  // não redação) e sem "não sei"/"n/a" virando dado.
+  const campos: Record<string, string> = {}
+  const camposRaw = parsed.campos
+  if (camposRaw && typeof camposRaw === 'object' && !Array.isArray(camposRaw)) {
+    for (const [nome, valor] of Object.entries(camposRaw as Record<string, unknown>)) {
+      if (typeof valor !== 'string') continue
+      const limpo = valor.trim()
+      if (!limpo || limpo.length > 120) continue
+      if (/^(null|n\/a|não sei|nao sei|desconhecido|-)$/i.test(limpo)) continue
+      campos[nome.trim()] = limpo
+    }
+  }
+
   return {
     temperatura,
     intencao,
@@ -561,6 +597,7 @@ export function parseRadarAnalysis(
     proximo_contato,
     escalar_humano: parsed.escalar_humano === true,
     escalar_motivo: asText(parsed.escalar_motivo),
+    campos,
   }
 }
 
@@ -697,6 +734,88 @@ export async function reapplyRadarTagsForConversation(
   const db = admin()
   if (!db) return
   await applyRadarTags(db, accountId, contactId, values)
+}
+
+// ---------------------------------------------------------------------------
+// Ficha do cliente preenchida pela IA (048)
+
+interface AiField {
+  id: string
+  field_name: string
+  ai_hint: string | null
+}
+
+/** Campos personalizados que a conta deixou sob responsabilidade da IA. */
+async function loadAiFields(
+  db: SupabaseClient,
+  accountId: string,
+): Promise<AiField[]> {
+  const { data } = await db
+    .from('custom_fields')
+    .select('id, field_name, ai_hint')
+    .eq('account_id', accountId)
+    .eq('ai_managed', true)
+    .order('field_name')
+  return (data ?? []) as AiField[]
+}
+
+/** Instrução de ficha no prompt — vazia quando a conta não tem campos. */
+function buildFichaBlock(campos: AiField[]): string {
+  if (campos.length === 0) return ''
+  const lista = campos
+    .map((c) => `  · "${c.field_name}"${c.ai_hint ? `: ${c.ai_hint}` : ''}`)
+    .join('\n')
+  return [
+    '- campos: preencha a FICHA do cliente com o que der para deduzir da conversa. Só inclua um campo quando tiver certeza pelo que foi dito — nunca invente nem chute. Campos disponíveis:',
+    lista,
+    '  Formato: {"Cidade": "Canoas"}. Omita os campos sem informação.',
+  ].join('\n')
+}
+
+/**
+ * Grava a ficha. Regra de ouro: o que gente escreveu NÃO é sobrescrito
+ * pela IA (source='human'); a IA só preenche vazio ou atualiza o que ela
+ * mesma pôs. Assim o atendente corrige uma vez e a correção fica.
+ */
+async function fillContactFields(
+  db: SupabaseClient,
+  contactId: string,
+  camposIa: AiField[],
+  valores: Record<string, string>,
+): Promise<void> {
+  const porNome = new Map(camposIa.map((c) => [c.field_name.toLowerCase(), c]))
+
+  const { data: existentes } = await db
+    .from('contact_custom_values')
+    .select('custom_field_id, value, source')
+    .eq('contact_id', contactId)
+  const porCampo = new Map(
+    (existentes ?? []).map((v) => [
+      v.custom_field_id as string,
+      { value: v.value as string | null, source: v.source as string },
+    ]),
+  )
+
+  const nowIso = new Date().toISOString()
+  for (const [nome, valor] of Object.entries(valores)) {
+    const campo = porNome.get(nome.trim().toLowerCase())
+    if (!campo) continue // A IA inventou um campo que não existe.
+
+    const atual = porCampo.get(campo.id)
+    if (atual?.source === 'human' && atual.value?.trim()) continue
+    if (atual?.value?.trim() === valor) continue
+
+    await db.from('contact_custom_values').upsert(
+      {
+        contact_id: contactId,
+        custom_field_id: campo.id,
+        value: valor,
+        source: 'ai',
+        updated_at: nowIso,
+      },
+      { onConflict: 'contact_id,custom_field_id' },
+    )
+  }
 }
 
 /** Lead esquentou: avisa a equipe no sino com o motivo e o link do chat. */

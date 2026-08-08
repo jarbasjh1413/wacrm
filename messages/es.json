@@ -196,7 +196,8 @@
       "toastAssignmentFailed": "No se pudo actualizar la asignación",
       "callWhatsApp": "Llamar por WhatsApp (abre la aplicación oficial)",
       "callPhone": "Llamar a este número",
-      "jumpToBottom": "Ir al final"
+      "jumpToBottom": "Ir al final",
+      "scriptsPanel": "Guiones y respuestas"
     },
     "sessionTimer": {
       "expired": "Expirada",
@@ -318,7 +319,9 @@
       "addNotePlaceholder": "Agregar una nota...",
       "osOrders": "Órdenes de servicio",
       "noOsOrders": "Aún no hay órdenes",
-      "osNumber": "OS {id}"
+      "osNumber": "OS {id}",
+      "profile": "Ficha del cliente",
+      "filledByAi": "Rellenado por la IA"
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está pausado aquí",
@@ -358,7 +361,22 @@
         "pos_venda": "Posventa",
         "outro": "Otro",
         "indefinido": "Por definir"
-      }
+      },
+      "showJourney": "Ver recorrido completo",
+      "hideJourney": "Ocultar recorrido",
+      "noJourney": "Aún no hay historial",
+      "followupSent": "Seguimiento enviado por el agente"
+    },
+    "scriptsPanel": {
+      "title": "Guiones y respuestas",
+      "close": "Cerrar panel",
+      "searchPlaceholder": "Buscar…",
+      "uncategorized": "Sin categoría",
+      "empty": "Nada guardado aún",
+      "emptyHint": "Crea respuestas rápidas y guiones en Configuración.",
+      "scriptSent": "¡Guion enviado — {n} mensajes!",
+      "emptyReply": "Esta respuesta no tiene texto",
+      "sendFailed": "Error al enviar"
     }
   },
   "Contacts": {

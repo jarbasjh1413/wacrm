@@ -11,7 +11,10 @@ import { createClient } from '@/lib/supabase/client';
 import { useTranslations } from 'next-intl';
 import {
   CalendarClock,
+  ChevronDown,
   Flame,
+  History,
+  Loader2,
   Radar,
   Snowflake,
   Sun,
@@ -24,7 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatMediumDateTime } from '@/lib/app-locale';
+import { formatMediumDate, formatMediumDateTime } from '@/lib/app-locale';
 import { cn } from '@/lib/utils';
 
 type Temperatura = 'quente' | 'morno' | 'frio' | 'indefinido';
@@ -63,6 +66,14 @@ interface Momento {
   em: string;
   tipo: string;
   texto: string;
+}
+
+/** Um ponto da jornada — momento da IA, OS ou follow-up enviado. */
+interface JourneyEvent {
+  em: string;
+  icone: string;
+  texto: string;
+  detalhe?: string;
 }
 
 interface InsightRow {
@@ -116,6 +127,63 @@ export function RadarCard({ conversationId }: { conversationId: string }) {
   const supabase = createClient();
   const [insight, setInsight] = useState<InsightRow | null>(null);
   const [saving, setSaving] = useState<'temperatura' | 'intencao' | null>(null);
+
+  // Jornada expansível (048): a história completa do cliente aqui
+  // dentro, sem trocar de tela. Carregada só quando o agente abre.
+  const [journeyOpen, setJourneyOpen] = useState(false);
+  const [journey, setJourney] = useState<JourneyEvent[] | null>(null);
+
+  const toggleJourney = useCallback(async () => {
+    const opening = !journeyOpen;
+    setJourneyOpen(opening);
+    if (!opening || journey !== null) return;
+
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('contact_id')
+      .eq('id', conversationId)
+      .maybeSingle();
+
+    const [osRes, followRes] = await Promise.all([
+      conv?.contact_id
+        ? supabase
+            .from('os_events')
+            .select('os_id, status, equipamento, data_evento')
+            .eq('contact_id', conv.contact_id)
+            .order('data_evento', { ascending: false })
+            .limit(30)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from('followup_suggestions')
+        .select('cenario, mensagem_final, mensagem_sugerida, decided_at, created_at')
+        .eq('conversation_id', conversationId)
+        .in('status', ['sent', 'edited', 'auto_sent'])
+        .order('created_at', { ascending: false })
+        .limit(30),
+    ]);
+
+    const eventos: JourneyEvent[] = [
+      ...((insight?.momentos ?? []) as Momento[]).map((m) => ({
+        em: m.em,
+        icone: MOMENTO_ICON[m.tipo] ?? '•',
+        texto: m.texto,
+      })),
+      ...((osRes.data ?? []) as Record<string, unknown>[]).map((o) => ({
+        em: o.data_evento as string,
+        icone: '🔧',
+        texto: `OS ${o.os_id}${o.status ? ` — ${String(o.status).replaceAll('_', ' ')}` : ''}`,
+        detalhe: (o.equipamento as string | null) ?? undefined,
+      })),
+      ...((followRes.data ?? []) as Record<string, unknown>[]).map((f) => ({
+        em: (f.decided_at as string) ?? (f.created_at as string),
+        icone: '🤖',
+        texto: t('followupSent'),
+        detalhe: ((f.mensagem_final ?? f.mensagem_sugerida) as string) ?? undefined,
+      })),
+    ].sort((a, b) => (a.em > b.em ? -1 : 1));
+
+    setJourney(eventos);
+  }, [journeyOpen, journey, supabase, conversationId, insight, t]);
 
   const fetchInsight = useCallback(async () => {
     const { data } = await supabase
@@ -286,6 +354,55 @@ export function RadarCard({ conversationId }: { conversationId: string }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Jornada completa aqui dentro (048): o atendente vê a história
+          inteira do cliente — com datas — sem sair da conversa. */}
+      <button
+        type="button"
+        onClick={() => void toggleJourney()}
+        className="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <History className="h-3 w-3" />
+        {journeyOpen ? t('hideJourney') : t('showJourney')}
+        <ChevronDown
+          className={cn('h-3 w-3 transition-transform', journeyOpen && 'rotate-180')}
+        />
+      </button>
+
+      {journeyOpen && (
+        <div className="mt-1 border-t border-border pt-2">
+          {journey === null ? (
+            <div className="flex justify-center py-3">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : journey.length === 0 ? (
+            <p className="py-2 text-center text-[11px] text-muted-foreground">
+              {t('noJourney')}
+            </p>
+          ) : (
+            <ol className="space-y-2 border-l border-border pl-3">
+              {journey.map((ev, i) => (
+                <li key={`${ev.em}-${i}`} className="relative">
+                  <span className="absolute -left-[1.15rem] top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-card-2 text-[9px]">
+                    {ev.icone}
+                  </span>
+                  <p className="text-[11px] leading-snug text-foreground">
+                    {ev.texto}
+                  </p>
+                  {ev.detalhe && (
+                    <p className="line-clamp-2 text-[10px] leading-snug text-muted-foreground">
+                      {ev.detalhe}
+                    </p>
+                  )}
+                  <p className="text-[9px] text-muted-foreground/70">
+                    {formatMediumDate(ev.em)}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       )}
     </div>
   );

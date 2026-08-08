@@ -16,6 +16,8 @@ import {
   StickyNote,
   Plus,
   Wrench,
+  ClipboardList,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -42,6 +44,14 @@ const OS_STATUS_STYLES: Record<string, string> = {
   entregue: "bg-slate-500/15 text-muted-foreground",
 };
 
+/** Campo da ficha do cliente — `source` marca o que veio da IA (048). */
+interface ContactFieldRow {
+  id: string;
+  name: string;
+  value: string;
+  source: string;
+}
+
 interface ContactSidebarProps {
   contact: Contact | null;
   /** Conversa aberta — alimenta o card do Radar (§10.5). */
@@ -57,6 +67,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
   const [deals, setDeals] = useState<Deal[]>([]);
   const [notes, setNotes] = useState<ContactNote[]>([]);
   const [osOrders, setOsOrders] = useState<OsOrderRow[]>([]);
+  const [fields, setFields] = useState<ContactFieldRow[]>([]);
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
@@ -67,7 +78,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     const supabase = createClient();
 
     // Fetch deals, notes, tags and OS events in parallel
-    const [dealsRes, notesRes, tagsRes, osRes] = await Promise.all([
+    const [dealsRes, notesRes, tagsRes, osRes, fieldsRes] = await Promise.all([
       supabase
         .from("deals")
         .select("*, stage:pipeline_stages(*)")
@@ -88,6 +99,11 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         .eq("contact_id", contact.id)
         .order("data_evento", { ascending: false })
         .limit(50),
+      // Ficha do cliente: valores + o nome do campo (048).
+      supabase
+        .from("contact_custom_values")
+        .select("id, value, source, field:custom_fields(field_name)")
+        .eq("contact_id", contact.id),
     ]);
 
     if (dealsRes.data) setDeals(dealsRes.data);
@@ -100,6 +116,26 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         if (!latestByOs.has(ev.os_id)) latestByOs.set(ev.os_id, ev);
       }
       setOsOrders([...latestByOs.values()]);
+    }
+    if (fieldsRes.data) {
+      setFields(
+        (fieldsRes.data as Record<string, unknown>[])
+          .map((row) => {
+            const fieldRaw = row.field;
+            const field = Array.isArray(fieldRaw) ? fieldRaw[0] : fieldRaw;
+            const name = (field as { field_name?: string })?.field_name;
+            const value = row.value as string | null;
+            if (!name || !value?.trim()) return null;
+            return {
+              id: row.id as string,
+              name,
+              value: value.trim(),
+              source: (row.source as string) ?? "human",
+            };
+          })
+          .filter((f): f is ContactFieldRow => f !== null)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      );
     }
     if (tagsRes.data) {
       const mapped = tagsRes.data
@@ -224,6 +260,42 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
 
           {/* Divider */}
           <div className="my-4 border-t border-border" />
+
+          {/* Ficha do cliente — o que a IA foi deduzindo da conversa
+              (cidade, profissão, equipamento) mais o que a equipe
+              preencheu à mão. Some quando não há nada ainda. */}
+          {fields.length > 0 && (
+            <>
+              <div>
+                <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <ClipboardList className="h-3 w-3" />
+                  {tSidebar("profile")}
+                </div>
+                <dl className="mt-2 space-y-1">
+                  {fields.map((f) => (
+                    <div
+                      key={f.id}
+                      className="flex items-baseline justify-between gap-2 rounded-md px-1 py-0.5"
+                    >
+                      <dt className="shrink-0 text-[11px] text-muted-foreground">
+                        {f.name}
+                      </dt>
+                      <dd className="flex min-w-0 items-center gap-1 text-xs text-foreground">
+                        <span className="truncate">{f.value}</span>
+                        {f.source === "ai" && (
+                          <span title={tSidebar("filledByAi")}>
+                            <Sparkles className="h-2.5 w-2.5 shrink-0 text-primary" />
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              <div className="my-4 border-t border-border" />
+            </>
+          )}
 
           {/* Tags */}
           <div>
