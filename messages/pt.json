@@ -1449,7 +1449,15 @@
         "blue": "Azul",
         "violet": "Violeta",
         "pink": "Rosa"
-      }
+      },
+      "funnelChip": "Funil",
+      "funnelAdd": "Usar como estágio do funil (vira chip no inbox)",
+      "funnelRemove": "Tirar do funil",
+      "funnelAdded": "Etiqueta virou estágio do funil",
+      "funnelRemoved": "Etiqueta saiu do funil",
+      "funnelFailed": "Falha ao atualizar o funil",
+      "moveUp": "Mover para antes",
+      "moveDown": "Mover para depois"
     },
     "templates": {
       "title": "Modelos de mensagem",

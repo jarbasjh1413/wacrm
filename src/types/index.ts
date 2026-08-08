@@ -121,6 +121,10 @@ export interface Tag {
   name: string;
   color: string;
   created_at: string;
+  /** Compõe os chips de funil do inbox (migration 046). */
+  is_funnel_stage?: boolean;
+  /** Ordem do chip no funil; empates caem para ordem alfabética. */
+  funnel_position?: number;
 }
 
 export interface ContactTag {

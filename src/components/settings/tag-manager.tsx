@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Plus, Tag as TagIcon, X } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Filter,
+  Loader2,
+  Plus,
+  Tag as TagIcon,
+  X,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -73,6 +81,9 @@ export function TagManager() {
         .from('tags')
         .select('*')
         .eq('user_id', userId)
+        // Mesma ordem dos chips do inbox (046) — o que se vê aqui é o
+        // funil de verdade, na sequência em que ele aparece lá.
+        .order('funnel_position', { ascending: true })
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -82,6 +93,66 @@ export function TagManager() {
       toast.error(t('failedToLoadTags'));
     } finally {
       setLoading(false);
+    }
+  }
+
+  /** Liga/desliga a etiqueta como estágio do funil (chip no inbox). */
+  async function toggleFunnel(tag: Tag) {
+    const next = !tag.is_funnel_stage;
+    // Entrando no funil, vai para o fim da fila.
+    const position = next
+      ? Math.max(0, ...tags.map((t) => t.funnel_position ?? 0)) + 10
+      : 0;
+    setTags((prev) =>
+      prev.map((t) =>
+        t.id === tag.id
+          ? { ...t, is_funnel_stage: next, funnel_position: position }
+          : t,
+      ),
+    );
+    const { error } = await supabase
+      .from('tags')
+      .update({ is_funnel_stage: next, funnel_position: position })
+      .eq('id', tag.id);
+    if (error) {
+      toast.error(t('funnelFailed'));
+      if (user) void fetchTags(user.id);
+      return;
+    }
+    toast.success(next ? t('funnelAdded') : t('funnelRemoved'));
+  }
+
+  /** Troca a etiqueta de lugar com a vizinha (ordem dos chips). */
+  async function moveFunnel(tag: Tag, direction: -1 | 1) {
+    const index = tags.findIndex((t) => t.id === tag.id);
+    const target = tags[index + direction];
+    if (!target) return;
+
+    const reordered = [...tags];
+    [reordered[index], reordered[index + direction]] = [
+      reordered[index + direction],
+      reordered[index],
+    ];
+    // Reescreve as posições em passos de 10 — sobra espaço para
+    // inserções futuras sem renumerar tudo.
+    const withPositions = reordered.map((t, i) => ({
+      ...t,
+      funnel_position: (i + 1) * 10,
+    }));
+    setTags(withPositions);
+
+    const updates = withPositions
+      .filter((t) => t.is_funnel_stage)
+      .map((t) =>
+        supabase
+          .from('tags')
+          .update({ funnel_position: t.funnel_position })
+          .eq('id', t.id),
+      );
+    const results = await Promise.all(updates);
+    if (results.some((r) => r.error)) {
+      toast.error(t('funnelFailed'));
+      if (user) void fetchTags(user.id);
     }
   }
 
@@ -169,33 +240,84 @@ export function TagManager() {
         ) : (
           <>
             {tags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <span
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {tags.map((tag, index) => (
+                  <li
                     key={tag.id}
-                    className="group inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
-                    style={{
-                      backgroundColor: `${tag.color}20`,
-                      color: tag.color,
-                      border: `1px solid ${tag.color}40`,
-                    }}
+                    className="flex items-center gap-2 px-3 py-2"
                   >
                     <span
-                      className="size-2 rounded-full"
-                      style={{ backgroundColor: tag.color }}
-                    />
-                    {tag.name}
-                    <button
-                      type="button"
-                      onClick={() => confirmDelete(tag)}
-                      aria-label={t('deleteAria', { name: tag.name })}
-                      className="ml-0.5 rounded-full p-0.5 opacity-60 transition-opacity hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/10"
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium"
+                      style={{
+                        backgroundColor: `${tag.color}20`,
+                        color: tag.color,
+                        border: `1px solid ${tag.color}40`,
+                      }}
                     >
-                      <X className="size-3" />
-                    </button>
-                  </span>
+                      <span
+                        className="size-2 rounded-full"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                      {tag.name}
+                    </span>
+
+                    <div className="ml-auto flex items-center gap-1">
+                      {/* Estágio de funil: vira chip com contador no inbox (046). */}
+                      <button
+                        type="button"
+                        onClick={() => void toggleFunnel(tag)}
+                        title={
+                          tag.is_funnel_stage
+                            ? t('funnelRemove')
+                            : t('funnelAdd')
+                        }
+                        aria-pressed={tag.is_funnel_stage ?? false}
+                        className={cn(
+                          'flex h-7 items-center gap-1 rounded-md px-2 text-[11px] transition-colors',
+                          tag.is_funnel_stage
+                            ? 'bg-primary-soft text-primary'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        )}
+                      >
+                        <Filter className="size-3" />
+                        {t('funnelChip')}
+                      </button>
+
+                      {tag.is_funnel_stage && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void moveFunnel(tag, -1)}
+                            disabled={index === 0}
+                            aria-label={t('moveUp')}
+                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-30"
+                          >
+                            <ArrowUp className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void moveFunnel(tag, 1)}
+                            disabled={index === tags.length - 1}
+                            aria-label={t('moveDown')}
+                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-30"
+                          >
+                            <ArrowDown className="size-3.5" />
+                          </button>
+                        </>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => confirmDelete(tag)}
+                        aria-label={t('deleteAria', { name: tag.name })}
+                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-red-400"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             ) : (
               <p className="text-sm text-muted-foreground">
                 {t('noTags')}

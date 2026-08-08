@@ -1449,7 +1449,15 @@
         "blue": "Azul",
         "violet": "Violeta",
         "pink": "Rosa"
-      }
+      },
+      "funnelChip": "Embudo",
+      "funnelAdd": "Usar como etapa del embudo",
+      "funnelRemove": "Quitar del embudo",
+      "funnelAdded": "Etiqueta añadida al embudo",
+      "funnelRemoved": "Etiqueta quitada del embudo",
+      "funnelFailed": "Error al actualizar el embudo",
+      "moveUp": "Mover antes",
+      "moveDown": "Mover después"
     },
     "templates": {
       "title": "Plantillas de mensajes",

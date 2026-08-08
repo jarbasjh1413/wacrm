@@ -273,6 +273,30 @@ export function ConversationList({
     return m;
   }, [tags]);
 
+  /**
+   * Chips de funil (migration 046) — a etiqueta É o estágio. Contador
+   * sai das conversas já carregadas (nada de round-trip por chip), e o
+   * chip acende quando o filtro daquela etiqueta está ativo.
+   */
+  const funnelStages = useMemo(() => {
+    const stages = tags
+      .filter((t) => t.is_funnel_stage)
+      .sort(
+        (a, b) =>
+          (a.funnel_position ?? 0) - (b.funnel_position ?? 0) ||
+          a.name.localeCompare(b.name),
+      );
+    if (stages.length === 0) return [];
+
+    const counts = new Map<string, number>();
+    for (const conv of conversations) {
+      for (const tag of conv.contact?.tags ?? []) {
+        counts.set(tag.id, (counts.get(tag.id) ?? 0) + 1);
+      }
+    }
+    return stages.map((tag) => ({ tag, count: counts.get(tag.id) ?? 0 }));
+  }, [tags, conversations]);
+
   const filtered = useMemo(() => {
     let result = conversations;
 
@@ -369,6 +393,44 @@ export function ConversationList({
               {opt.label}
             </button>
           ))}
+
+          {/* Etiquetas de funil viram chips com contador (046) — a
+              visão de operação que o Jarbas tem na extensão. */}
+          {funnelStages.map(({ tag, count }) => {
+            const active = selectedTagIds.includes(tag.id);
+            return (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() =>
+                  setSelectedTagIds((prev) =>
+                    prev.includes(tag.id)
+                      ? prev.filter((id) => id !== tag.id)
+                      : [...prev, tag.id],
+                  )
+                }
+                title={tag.name}
+                className={cn(
+                  'flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs capitalize transition-colors',
+                  active
+                    ? 'font-medium text-foreground'
+                    : 'border-transparent bg-muted text-muted-foreground hover:text-foreground',
+                )}
+                style={
+                  active
+                    ? { borderColor: tag.color, backgroundColor: `${tag.color}22` }
+                    : undefined
+                }
+              >
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: tag.color }}
+                />
+                {tag.name}
+                <span className="tabular-nums opacity-70">{count}</span>
+              </button>
+            );
+          })}
 
           {/* Modo seleção múltipla (ações em massa). */}
           <button

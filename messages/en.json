@@ -1449,7 +1449,15 @@
         "blue": "Blue",
         "violet": "Violet",
         "pink": "Pink"
-      }
+      },
+      "funnelChip": "Funnel",
+      "funnelAdd": "Use as a funnel stage (shows as an inbox chip)",
+      "funnelRemove": "Remove from funnel",
+      "funnelAdded": "Tag is now a funnel stage",
+      "funnelRemoved": "Tag removed from funnel",
+      "funnelFailed": "Failed to update the funnel",
+      "moveUp": "Move earlier",
+      "moveDown": "Move later"
     },
     "templates": {
       "title": "Message templates",
