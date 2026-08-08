@@ -61,7 +61,13 @@ export async function loadMetrics(db: DB): Promise<MetricsBundle> {
       .select('id', { count: 'exact', head: true })
       .gte('created_at', yesterdayStart)
       .lt('created_at', todayStart),
-    db.from('deals').select('value, status').eq('status', 'open'),
+    // Só VENDAS: o valor de um card de conserto pré-loja é chute, e somar
+    // isso com preço de notebook faz o painel mentir (053).
+    db
+      .from('deals')
+      .select('value, status, pipelines!inner(tipo)')
+      .eq('status', 'open')
+      .eq('pipelines.tipo', 'vendas'),
     db
       .from('messages')
       .select('id', { count: 'exact', head: true })
@@ -133,7 +139,11 @@ export async function loadConversationsSeries(
 export async function loadPipelineDonut(db: DB): Promise<PipelineDonutData> {
   const [stagesRes, dealsRes] = await Promise.all([
     db.from('pipeline_stages').select('id, name, color, pipeline_id, position').order('position'),
-    db.from('deals').select('stage_id, value, status').eq('status', 'open'),
+    db
+      .from('deals')
+      .select('stage_id, value, status, pipelines!inner(tipo)')
+      .eq('status', 'open')
+      .eq('pipelines.tipo', 'vendas'),
   ])
 
   const stages =
@@ -283,7 +293,8 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
       .limit(10),
     db
       .from('deals')
-      .select('id, title, updated_at, stage:pipeline_stages(name)')
+      .select('id, title, updated_at, stage:pipeline_stages(name), pipelines!inner(tipo)')
+      .eq('pipelines.tipo', 'vendas')
       .order('updated_at', { ascending: false })
       .limit(10),
     db

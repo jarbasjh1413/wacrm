@@ -44,6 +44,14 @@ const STAGE_ORDER: Record<RadarStage, number> = {
   perdido: 99,
 }
 
+/** Os dois quadros. O funil de serviço é o PRÉ-loja (053). */
+export type FunilTipo = 'vendas' | 'servico'
+
+export interface DealSyncResult {
+  dealId: string
+  funil: FunilTipo
+}
+
 export interface DealSyncInput {
   accountId: string
   contactId: string
@@ -57,6 +65,8 @@ export interface DealSyncInput {
   estagio: RadarStage | null
   temperatura: string
   intencao: string
+  /** Em qual quadro a IA disse que esta conversa vive. null = não soube. */
+  funil?: FunilTipo | null
 }
 
 interface StageRow {
@@ -64,6 +74,42 @@ interface StageRow {
   pipeline_id: string
   position: number
   radar_stage: string | null
+}
+
+interface PipelineRow {
+  id: string
+  tipo: string
+}
+
+/**
+ * Em qual quadro este cliente vive. A intenção sozinha não basta:
+ * "quanto custa trocar a tela" e "quanto custa um notebook i5" são a mesma
+ * intenção (orcamento) em quadros diferentes — por isso a IA declara, e a
+ * intenção é só a rede embaixo.
+ */
+function escolheFunil(input: DealSyncInput): FunilTipo | null {
+  if (input.funil === 'vendas' || input.funil === 'servico') return input.funil
+  if (input.intencao === 'compra') return 'vendas'
+  if (input.intencao === 'assistencia' || input.intencao === 'pos_venda') {
+    return 'servico'
+  }
+  return null
+}
+
+/**
+ * O teto da IA no funil de serviço. "Ganho" ali significa máquina na
+ * bancada — quem confirma isso é o sistema de OS ou o botão manual, nunca
+ * a conversa. O prompt pede; isto garante.
+ */
+function aplicaTeto(
+  estagio: RadarStage | null,
+  funil: FunilTipo | null,
+): RadarStage | null {
+  if (funil !== 'servico') return estagio
+  if (estagio === 'ganho') return 'reservado'
+  // Quem tem máquina com problema já é lead: entra no quadro mesmo que a
+  // IA não saiba dizer o ponto da conversa.
+  return estagio ?? 'novo'
 }
 
 /**
@@ -74,34 +120,73 @@ interface StageRow {
 export async function syncDealFromRadar(
   db: SupabaseClient,
   input: DealSyncInput,
-): Promise<string | null> {
+): Promise<DealSyncResult | null> {
   try {
-    const { data: existing } = await db
+    const pipelines = await loadPipelines(db, input.accountId)
+    const funil = escolheFunil(input)
+    const estagio = aplicaTeto(input.estagio, funil)
+    const idsDoFunil = funil
+      ? pipelines.filter((p) => p.tipo === funil).map((p) => p.id)
+      : []
+
+    // REGRA INVIOLÁVEL: sem funil daquele tipo, não faz nada. Nunca, em
+    // hipótese alguma, despeja lead de conserto no quadro de vendas —
+    // silêncio é melhor que quadro errado.
+    if (funil && idsDoFunil.length === 0) return null
+
+    let busca = db
       .from('deals')
-      .select('id, value, stage_id, status, value_locked_at, stage_locked_at, created_by_radar')
+      .select(
+        'id, value, stage_id, status, pipeline_id, value_locked_at, stage_locked_at, created_by_radar',
+      )
       .eq('account_id', input.accountId)
       .eq('contact_id', input.contactId)
-      .neq('status', 'lost')
+    if (funil === 'servico') {
+      // Card de serviço ganho é assunto encerrado: a máquina está lá dentro
+      // e a OS manda nela. Sem isto, quem já teve máquina na bancada nunca
+      // mais geraria card de conserto (segunda máquina, a da esposa...).
+      busca = busca.eq('status', 'open')
+    } else {
+      busca = busca.neq('status', 'lost')
+    }
+    if (idsDoFunil.length > 0) busca = busca.in('pipeline_id', idsDoFunil)
+
+    const { data: existing } = await busca
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    // Sem negócio ainda: só vale abrir um quando há intenção de compra E
-    // um sinal concreto. Abrir card para quem só perguntou o horário
-    // entupiria o funil de lixo.
     if (!existing) {
-      const vaiComprar = input.intencao === 'compra'
-      const temSinal =
-        input.valorEstimado !== null ||
-        input.temperatura === 'quente' ||
-        (input.estagio !== null && STAGE_ORDER[input.estagio] >= 2)
-      if (!vaiComprar || !temSinal) return null
+      // Sem quadro decidido a IA não tem autoridade para abrir card.
+      if (!funil) return null
+      if (funil === 'vendas') {
+        // Vendas: só com sinal concreto, senão o board enche de lixo.
+        const temSinal =
+          input.valorEstimado !== null ||
+          input.temperatura === 'quente' ||
+          (estagio !== null && STAGE_ORDER[estagio] >= 2)
+        if (!temSinal) return null
+      } else if (estagio === 'perdido') {
+        // Serviço: barra mais baixa de propósito — quem tem máquina com
+        // problema já é o lead que a loja não pode perder. Só não abre
+        // card que já nasce morto.
+        return null
+      }
     }
 
-    const stages = await loadStages(db, input.accountId)
-    if (stages.length === 0) return existing?.id ?? null
+    const pipelineAlvo = existing?.pipeline_id ?? idsDoFunil[0]
+    if (!pipelineAlvo) return null
 
-    const alvo = input.estagio ? stages.find((s) => s.radar_stage === input.estagio) : null
+    const stages = await loadStages(db, pipelineAlvo)
+    if (stages.length === 0) {
+      return existing ? { dealId: existing.id, funil: funil ?? 'vendas' } : null
+    }
+
+    // Sem quadro decidido a IA pode acertar o valor, mas não move de coluna:
+    // se ela não soube dizer se é venda ou conserto, não sabe em que ponto
+    // do funil a conversa está.
+    const alvo =
+      funil && estagio ? stages.find((s) => s.radar_stage === estagio) : null
 
     if (!existing) {
       // Estágio de entrada: o mapeado, senão o primeiro do funil.
@@ -118,10 +203,12 @@ export async function syncDealFromRadar(
           title: input.interesse
             ? `${input.contactName} — ${input.interesse}`.slice(0, 120)
             : input.contactName,
-          value: input.valorEstimado ?? 0,
+          // No serviço o valor pré-loja é chute: só o orçamento da bancada
+          // vale, e ele vem da OS.
+          value: funil === 'servico' ? 0 : (input.valorEstimado ?? 0),
           currency: 'BRL',
           // deals.status só aceita open/won/lost (002).
-          status: statusDoEstagio(input.estagio),
+          status: statusDoEstagio(estagio),
           created_by_radar: true,
         })
         .select('id')
@@ -130,13 +217,14 @@ export async function syncDealFromRadar(
         console.error('[deal-sync] criação falhou:', error.message)
         return null
       }
-      return created?.id ?? null
+      return created?.id ? { dealId: created.id, funil: funil! } : null
     }
 
     // Já existe: atualiza só o que a IA ainda controla.
     const patch: Record<string, unknown> = {}
 
     if (
+      funil !== 'servico' &&
       input.valorEstimado !== null &&
       !existing.value_locked_at &&
       Number(existing.value ?? 0) !== input.valorEstimado
@@ -154,22 +242,31 @@ export async function syncDealFromRadar(
       const ordemAtual = atual?.radar_stage
         ? STAGE_ORDER[atual.radar_stage as RadarStage]
         : null
-      const ordemNova = STAGE_ORDER[input.estagio as RadarStage]
+      const ordemNova = STAGE_ORDER[estagio as RadarStage]
       const avancaNoFunil = ordemAtual === null ? true : ordemNova > ordemAtual
       // 'perdido' é saída lateral: pode vir de qualquer lugar.
-      if (input.estagio === 'perdido' || (avancaNoFunil && avancaNaTela)) {
+      if (estagio === 'perdido' || (avancaNoFunil && avancaNaTela)) {
         patch.stage_id = alvo.id
         // Ganhou/perdeu também é status, senão o card fica "aberto" na
         // coluna Comprou e os relatórios mentem.
-        const status = statusDoEstagio(input.estagio)
+        const status = statusDoEstagio(estagio)
         if (status !== existing.status) patch.status = status
       }
     }
 
-    if (Object.keys(patch).length === 0) return existing.id
+    const resultado: DealSyncResult = {
+      dealId: existing.id,
+      funil:
+        funil ??
+        (pipelines.find((p) => p.id === existing.pipeline_id)?.tipo ===
+        'servico'
+          ? 'servico'
+          : 'vendas'),
+    }
+    if (Object.keys(patch).length === 0) return resultado
 
     await db.from('deals').update(patch).eq('id', existing.id)
-    return existing.id
+    return resultado
   } catch (err) {
     console.error('[deal-sync] falhou:', err)
     return null
@@ -183,24 +280,28 @@ function statusDoEstagio(estagio: RadarStage | null): 'open' | 'won' | 'lost' {
   return 'open'
 }
 
-/** Estágios do funil da conta, do primeiro ao último. */
-async function loadStages(
+/** Funis da conta, do mais antigo ao mais novo. */
+async function loadPipelines(
   db: SupabaseClient,
   accountId: string,
-): Promise<StageRow[]> {
-  const { data: pipeline } = await db
+): Promise<PipelineRow[]> {
+  const { data } = await db
     .from('pipelines')
-    .select('id')
+    .select('id, tipo')
     .eq('account_id', accountId)
     .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-  if (!pipeline) return []
+  return (data ?? []) as PipelineRow[]
+}
 
+/** Estágios de UM funil, do primeiro ao último. */
+async function loadStages(
+  db: SupabaseClient,
+  pipelineId: string,
+): Promise<StageRow[]> {
   const { data } = await db
     .from('pipeline_stages')
     .select('id, pipeline_id, position, radar_stage')
-    .eq('pipeline_id', pipeline.id)
+    .eq('pipeline_id', pipelineId)
     .order('position', { ascending: true })
   return (data ?? []) as StageRow[]
 }
@@ -222,6 +323,12 @@ async function resolveOwner(
     rows[0]?.user_id ??
     null
   )
+}
+
+/** Normaliza o quadro devolvido pela IA. Lixo vira null, nunca quebra. */
+export function parseFunil(raw: unknown): FunilTipo | null {
+  const value = String(raw ?? '').trim().toLowerCase()
+  return value === 'vendas' || value === 'servico' ? value : null
 }
 
 /** Normaliza o estágio devolvido pela IA. */

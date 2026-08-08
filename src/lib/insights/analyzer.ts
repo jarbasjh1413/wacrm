@@ -29,6 +29,8 @@ import {
   syncDealFromRadar,
   parseRadarStage,
   parseValorEstimado,
+  parseFunil,
+  type FunilTipo,
   type RadarStage,
 } from './deal-sync'
 
@@ -94,6 +96,8 @@ export interface RadarAnalysis {
   valor_origem: string | null
   /** Momento da venda no vocabulário canônico do funil (051). */
   estagio: RadarStage | null
+  /** Em qual quadro esta conversa vive (053). */
+  funil: FunilTipo | null
 }
 
 export interface RadarScanResult {
@@ -394,13 +398,16 @@ async function analyzeConversation(
   if (promessaNova) result.promessas++
 
   // Ações — nenhuma delas pode derrubar a análise já gravada.
+  // A classificação que vale é a do humano quando ele já corrigiu: ela
+  // manda nas etiquetas E no quadro em que o negócio nasce.
+  const temperaturaFinal = previous?.temperatura_fixada_em
+    ? ((previous.temperatura as Temperatura) ?? analysis.temperatura)
+    : analysis.temperatura
+  const intencaoFinal = previous?.intencao_fixada_em
+    ? ((previous.intencao as Intencao) ?? analysis.intencao)
+    : analysis.intencao
+
   if (conv.contactId) {
-    const temperaturaFinal = previous?.temperatura_fixada_em
-      ? ((previous.temperatura as Temperatura) ?? analysis.temperatura)
-      : analysis.temperatura
-    const intencaoFinal = previous?.intencao_fixada_em
-      ? ((previous.intencao as Intencao) ?? analysis.intencao)
-      : analysis.intencao
     await applyRadarTags(db, accountId, conv.contactId, {
       temperatura: temperaturaFinal,
       intencao: intencaoFinal,
@@ -414,10 +421,10 @@ async function analyzeConversation(
       analysis.campos,
     ).catch((err) => console.error('[radar] ficha do contato falhou:', err))
   }
-  // Funil de vendas (051): o Radar mantém o negócio em dia com o que
-  // ouviu — valor e momento da venda —, respeitando o que gente mexeu.
+  // Funis (051/053): o Radar decide o quadro — vendas ou serviço — e
+  // mantém o negócio em dia, respeitando o que gente mexeu.
   if (conv.contactId) {
-    const dealId = await syncDealFromRadar(db, {
+    const sync = await syncDealFromRadar(db, {
       accountId,
       contactId: conv.contactId,
       conversationId: conv.id,
@@ -426,12 +433,21 @@ async function analyzeConversation(
       valorEstimado: analysis.valor_estimado,
       estagio: analysis.estagio,
       temperatura: analysis.temperatura,
-      intencao: analysis.intencao,
+      // intencaoFinal, não a crua: quando o Jarbas corrige a intenção no
+      // card do Radar, a correção também redireciona o QUADRO.
+      intencao: intencaoFinal,
+      funil: analysis.funil,
     })
-    if (dealId) {
+    if (sync) {
+      // Cada quadro tem a sua coluna — o cliente pode ter máquina na
+      // bancada E estar negociando um notebook ao mesmo tempo.
       await db
         .from('conversation_insights')
-        .update({ deal_id: dealId })
+        .update(
+          sync.funil === 'servico'
+            ? { deal_servico_id: sync.dealId }
+            : { deal_id: sync.dealId },
+        )
         .eq('conversation_id', conv.id)
     }
   }
@@ -502,11 +518,16 @@ function buildRadarPrompt(
     fichaBloco,
     '- valor_estimado: quanto o cliente demonstrou que pode/quer gastar, em reais, só o número (ex.: 4500). Vale o teto do orçamento dele, o valor que a loja passou e ele aceitou, ou a faixa que ele citou (use o topo da faixa). null se ninguém falou de dinheiro. NUNCA confunda modelo/geração/polegadas com valor.',
     '- valor_origem: em poucas palavras, de onde saiu esse número ("disse que pode pagar até 4.500").',
-    '- estagio: em que ponto da venda a conversa está — novo (chegou agora, ainda não sabemos o que quer), qualificado (sabemos o que ele procura), negociando (já se fala de preço/condições), reservado (pediu para separar/apartar), ganho (comprou/pagou), perdido (desistiu ou disse não). null se não for uma conversa de venda.',
+    '- funil: em qual QUADRO este cliente vive. "vendas" = quer comprar equipamento. "servico" = tem uma máquina com problema (conserto, formatação, upgrade, garantia, suporte). null quando não dá para saber — e use null mesmo: um "quanto custa?" solto pode ser as duas coisas ("quanto custa trocar a tela" é serviço, "quanto custa um notebook i5" é venda).',
+    '- estagio: em que ponto a conversa está. Leia conforme o QUADRO que você escolheu.',
+    '  NO QUADRO DE VENDAS: novo (chegou agora, ainda não sabemos o que quer), qualificado (sabemos o que ele procura), negociando (já se fala de preço/condições), reservado (pediu para separar/apartar), ganho (comprou/pagou), perdido (desistiu ou disse não).',
+    '  NO QUADRO DE SERVIÇO: novo (falou que tem um problema, sem detalhe), qualificado (já sabemos o equipamento E o defeito), negociando (já passamos faixa de preço, taxa de diagnóstico ou prazo), reservado (combinou CONCRETO de trazer na loja ou aceitar a coleta — tem dia, período ou "podem buscar"; "depois eu levo" NÃO é combinado), perdido (desistiu, achou caro, sumiu ou vai em outro lugar).',
+    '  NUNCA use "ganho" no quadro de serviço: quem confirma que a máquina chegou na loja é o sistema de ordem de serviço, não a conversa.',
+    '  null se não der para dizer',
     '- escalar_humano: true quando o lead ESQUENTOU e um atendente deve assumir AGORA (ex.: "consegui o dinheiro", "vou aí hoje", "pode separar que eu levo", pediu para fechar). false no resto.',
     '',
     'RESPONDA APENAS com JSON válido, sem markdown, neste formato:',
-    '{"temperatura":"quente|morno|frio|indefinido","intencao":"compra|assistencia|orcamento|informacao|pos_venda|outro|indefinido","interesse":"texto ou null","resumo":"texto ou null","momentos_novos":[{"tipo":"promessa_data","texto":"disse que compra dia 20"}],"proximo_contato":{"quando":"2026-08-20T13:00:00Z","motivo":"cliente disse que compra no dia 20"},"escalar_humano":false,"escalar_motivo":null,"campos":{"Cidade":"Canoas"},"valor_estimado":4500,"valor_origem":"disse que pode pagar até 4.500","estagio":"negociando"}',
+    '{"temperatura":"quente|morno|frio|indefinido","intencao":"compra|assistencia|orcamento|informacao|pos_venda|outro|indefinido","interesse":"texto ou null","resumo":"texto ou null","momentos_novos":[{"tipo":"promessa_data","texto":"disse que compra dia 20"}],"proximo_contato":{"quando":"2026-08-20T13:00:00Z","motivo":"cliente disse que compra no dia 20"},"escalar_humano":false,"escalar_motivo":null,"campos":{"Cidade":"Canoas"},"valor_estimado":4500,"valor_origem":"disse que pode pagar até 4.500","funil":"vendas","estagio":"negociando"}',
   ]
     .filter(Boolean)
     .join('\n')
@@ -639,6 +660,7 @@ export function parseRadarAnalysis(
     valor_estimado: parseValorEstimado(parsed.valor_estimado),
     valor_origem: asText(parsed.valor_origem),
     estagio: parseRadarStage(parsed.estagio),
+    funil: parseFunil(parsed.funil),
     temperatura,
     intencao,
     interesse: asText(parsed.interesse),

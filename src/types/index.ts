@@ -346,10 +346,16 @@ export interface MessageTemplate {
   created_at: string;
 }
 
+/** Os dois quadros: venda de equipamento e conserto (053). */
+export type PipelineTipo = 'vendas' | 'servico';
+
 export interface Pipeline {
   id: string;
   user_id: string;
+  /** NOT NULL desde a 017 — faltava aqui. */
+  account_id?: string;
   name: string;
+  tipo?: PipelineTipo;
   created_at: string;
 }
 
@@ -359,6 +365,8 @@ export interface PipelineStage {
   name: string;
   position: number;
   color: string;
+  /** Vocabulário canônico que a IA entende (051). Null = coluna muda. */
+  radar_stage?: string | null;
   created_at: string;
 }
 
@@ -386,6 +394,15 @@ export interface Deal {
   updated_at?: string;
   /** Negócio aberto pelo Radar, não por gente (051). */
   created_by_radar?: boolean;
+  /** Por que o negócio foi encerrado — inclusive "virou venda" (053). */
+  motivo_perda?: string | null;
+  motivo_perda_obs?: string | null;
+  /** O negócio do outro quadro, quando alguém converteu (053). */
+  relacionado_deal_id?: string | null;
+  /** Espelho da ordem de serviço. Vitrine, não fonte da verdade (053). */
+  os_id?: string | null;
+  os_status?: string | null;
+  os_atualizada_em?: string | null;
   /** Quando alguém mexeu no valor à mão — a partir daí a IA não toca. */
   value_locked_at?: string | null;
   /** Quando alguém arrastou o card à mão — a IA não move mais. */
