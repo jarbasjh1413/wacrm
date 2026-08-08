@@ -17,16 +17,18 @@ const SERVICO = 'p-servico'
 const STAGES = [
   // Vendas
   { id: 's0', pipeline_id: VENDAS, position: 0, radar_stage: 'novo' },
-  { id: 's1', pipeline_id: VENDAS, position: 1, radar_stage: 'qualificado' },
-  { id: 's2', pipeline_id: VENDAS, position: 2, radar_stage: 'negociando' },
-  { id: 's3', pipeline_id: VENDAS, position: 3, radar_stage: null }, // do dono
-  { id: 's4', pipeline_id: VENDAS, position: 4, radar_stage: 'reservado' },
-  { id: 's5', pipeline_id: VENDAS, position: 5, radar_stage: 'ganho' },
-  { id: 's6', pipeline_id: VENDAS, position: 6, radar_stage: 'perdido' },
+  { id: 'sq', pipeline_id: VENDAS, position: 1, radar_stage: 'qualificando' },
+  { id: 's1', pipeline_id: VENDAS, position: 2, radar_stage: 'qualificado' },
+  { id: 's2', pipeline_id: VENDAS, position: 3, radar_stage: 'orcamento' },
+  { id: 'sn', pipeline_id: VENDAS, position: 4, radar_stage: 'negociando' },
+  { id: 's3', pipeline_id: VENDAS, position: 5, radar_stage: null }, // do dono
+  { id: 's4', pipeline_id: VENDAS, position: 6, radar_stage: 'reservado' },
+  { id: 's5', pipeline_id: VENDAS, position: 7, radar_stage: 'ganho' },
+  { id: 's6', pipeline_id: VENDAS, position: 8, radar_stage: 'perdido' },
   // Serviço (053)
   { id: 'v0', pipeline_id: SERVICO, position: 0, radar_stage: 'novo' },
   { id: 'v1', pipeline_id: SERVICO, position: 1, radar_stage: 'qualificado' },
-  { id: 'v2', pipeline_id: SERVICO, position: 2, radar_stage: 'negociando' },
+  { id: 'v2', pipeline_id: SERVICO, position: 2, radar_stage: 'orcamento' },
   { id: 'v3', pipeline_id: SERVICO, position: 3, radar_stage: 'reservado' },
   { id: 'v4', pipeline_id: SERVICO, position: 4, radar_stage: 'ganho' },
   { id: 'v5', pipeline_id: SERVICO, position: 5, radar_stage: 'perdido' },
@@ -125,7 +127,7 @@ const BASE = {
   contactName: 'Maria',
   interesse: 'notebook i5',
   valorEstimado: 3500,
-  estagio: 'negociando' as const,
+  estagio: 'orcamento' as const,
   temperatura: 'quente',
   intencao: 'compra',
 }

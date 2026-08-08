@@ -7,6 +7,17 @@ import { aplicaOsNoFunilDeServico } from './deal-bridge'
 
 const SERVICO = 'p-servico'
 
+// O funil de serviço depois da 054: as quatro últimas colunas são
+// dirigidas pela OS, não pela IA.
+const STAGES = [
+  { id: 'v3', position: 3, os_situacao: 'aguardando_recebimento' },
+  { id: 'v4', position: 4, os_situacao: 'na_bancada' },
+  { id: 'v5', position: 5, os_situacao: 'aguardando_cliente' },
+  { id: 'v6', position: 6, os_situacao: 'pronto' },
+  { id: 'v7', position: 7, os_situacao: 'finalizada' },
+  { id: 'v8', position: 8, os_situacao: null },
+]
+
 type Card = Record<string, unknown> | null
 
 function makeDb(deal: Card, opts: { semFunil?: boolean } = {}) {
@@ -44,15 +55,13 @@ function makeDb(deal: Card, opts: { semFunil?: boolean } = {}) {
     function single() {
       if (op === 'update') return null
       if (table === 'deals') return deal
-      if (table === 'pipeline_stages') {
-        return filtros.radar_stage === 'ganho' ? { id: 'v4' } : null
-      }
       return null
     }
     function list() {
       if (table === 'pipelines') {
         return opts.semFunil ? [] : [{ id: SERVICO }]
       }
+      if (table === 'pipeline_stages') return STAGES
       return []
     }
     return builder
@@ -95,16 +104,38 @@ describe('aplicaOsNoFunilDeServico — a fronteira', () => {
     expect(calls.updated).not.toHaveProperty('status')
   })
 
-  it('máquina na bancada move o card, marca ganho e TRANCA', async () => {
+  it('máquina na bancada move o card para a coluna da OS', async () => {
     const { db, calls } = makeDb({ ...CARD })
     await aplicaOsNoFunilDeServico(db, { ...ENTRADA, status: 'Em serviço' })
-    expect(calls.updated).toMatchObject({
-      stage_id: 'v4',
-      status: 'won',
-      os_status: 'na_bancada',
-    })
-    expect(calls.updated?.stage_locked_at).toBeTruthy()
-    expect(calls.updated?.value_locked_at).toBeTruthy()
+    expect(calls.updated).toMatchObject({ stage_id: 'v4', os_status: 'na_bancada' })
+    // Na bancada ainda não é ganho: o ganho do serviço é a entrega.
+    expect(calls.updated).not.toHaveProperty('status')
+  })
+
+  it('o card SEGUE a OS coluna a coluna até a entrega', async () => {
+    for (const [status, stage, situacao] of [
+      ['Aguardando cliente', 'v5', 'aguardando_cliente'],
+      ['Pronto para entrega', 'v6', 'pronto'],
+      ['Aguardando retirada', 'v6', 'pronto'],
+    ] as const) {
+      const { db, calls } = makeDb({ ...CARD })
+      await aplicaOsNoFunilDeServico(db, { ...ENTRADA, status })
+      expect(calls.updated).toMatchObject({ stage_id: stage, os_status: situacao })
+    }
+  })
+
+  it('"Finalizada" é o ganho do funil de serviço', async () => {
+    const { db, calls } = makeDb({ ...CARD })
+    await aplicaOsNoFunilDeServico(db, { ...ENTRADA, status: 'Finalizada' })
+    expect(calls.updated).toMatchObject({ stage_id: 'v7', status: 'won' })
+  })
+
+  it('OS que volta de coluna NÃO puxa o card para trás', async () => {
+    // Máquina voltou pra bancada depois de "pronta": quem volta card é gente.
+    const { db, calls } = makeDb({ ...CARD, stage_id: 'v6' })
+    await aplicaOsNoFunilDeServico(db, { ...ENTRADA, status: 'Em serviço' })
+    expect(calls.updated).toMatchObject({ os_status: 'na_bancada' })
+    expect(calls.updated).not.toHaveProperty('stage_id')
   })
 
   it('status desconhecido espelha mas não move', async () => {

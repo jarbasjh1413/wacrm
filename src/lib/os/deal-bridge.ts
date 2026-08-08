@@ -10,14 +10,20 @@
  *     mandado mensagem não é lead do CRM. O funil de serviço mede a demanda
  *     que chegou pelo WhatsApp, não o movimento da loja.
  *   - **Não reproduz o kanban da OS.** Aquele quadro tem 12 colunas e é a
- *     verdade do conserto; copiá-lo aqui garantiria que os dois
- *     discordassem. O card só guarda o espelho (`os_status`) para mostrar.
+ *     verdade do conserto. O CRM tem QUATRO colunas dirigidas pela OS —
+ *     as que mudam o que ele tem a DIZER ao cliente: na bancada,
+ *     orçamento enviado, pronta pra retirar, entregue. O resto (autorizado,
+ *     em serviço, aguardando peça) é trabalho interno e vive na OS.
+ *
+ * A IA não consegue mexer nessas colunas nem querendo: elas têm
+ * `radar_stage` nulo, e o deal-sync só move para estágio com palavra
+ * canônica. Dois motores, sem colisão.
  *   - **Não lança.** O funil é consequência; nunca pode derrubar o 201 que
  *     o sistema de OS está esperando.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { mapOsSituacao, maquinaChegou } from './status-map'
+import { mapOsSituacao } from './status-map'
 
 export interface OsBridgeInput {
   accountId: string
@@ -63,32 +69,34 @@ export async function aplicaOsNoFunilDeServico(
       os_atualizada_em: agora,
     }
 
-    // Só o momento da CHEGADA move o card. "Aguardando recebimento" é OS
-    // aberta com a máquina ainda na casa do cliente: o card fica onde
-    // está e a cobrança de "que dia você traz?" continua valendo.
-    if (maquinaChegou(input.status) && deal.status === 'open') {
-      if (deal.stage_locked_at) {
-        // Alguém arrastou este card à mão. Decisão humana é soberana: a
-        // ponte só espelha a OS e deixa a coluna como a pessoa deixou.
-        console.warn(
-          `[os-bridge] card ${deal.id} está travado à mão — só espelhando a OS`,
-        )
-      } else {
-        const { data: alvo } = await db
-          .from('pipeline_stages')
-          .select('id')
-          .eq('pipeline_id', deal.pipeline_id)
-          .eq('radar_stage', 'ganho')
-          .limit(1)
-          .maybeSingle()
-        if (alvo && alvo.id !== deal.stage_id) {
+    if (situacao !== 'desconhecido' && deal.status !== 'lost') {
+      // Colunas dirigidas pela OS (054): o card segue o conserto de
+      // verdade — na bancada → orçamento enviado → pronta → entregue.
+      const { data: stages } = await db
+        .from('pipeline_stages')
+        .select('id, position, os_situacao')
+        .eq('pipeline_id', deal.pipeline_id)
+        .order('position', { ascending: true })
+      const lista = (stages ?? []) as {
+        id: string
+        position: number
+        os_situacao: string | null
+      }[]
+      const alvo = lista.find((s) => s.os_situacao === situacao)
+      const atual = lista.find((s) => s.id === deal.stage_id)
+
+      if (alvo && alvo.id !== deal.stage_id) {
+        if (deal.stage_locked_at) {
+          // Alguém arrastou este card à mão. Decisão humana é soberana:
+          // a ponte só espelha a OS e deixa a coluna onde a pessoa pôs.
+          console.warn(
+            `[os-bridge] card ${deal.id} travado à mão — só espelhando a OS`,
+          )
+        } else if (!atual || alvo.position > atual.position) {
+          // Só adiante. OS que volta de coluna (voltou pra bancada) não
+          // arrasta o card para trás — quem faz isso é gente.
           patch.stage_id = alvo.id
-          patch.status = 'won'
-          // A partir daqui a OS assume: a IA não mexe mais em coluna nem
-          // em valor deste card. Usa as mesmas travas da soberania humana
-          // (051) — é um evento único e terminal, não um automatismo.
-          patch.stage_locked_at = agora
-          patch.value_locked_at = agora
+          if (situacao === 'finalizada') patch.status = 'won'
         }
       }
     }

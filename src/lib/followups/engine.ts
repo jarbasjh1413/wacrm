@@ -51,6 +51,8 @@ const AUTO_CENARIOS: ReadonlySet<FollowupCenario> = new Set([
 ])
 
 interface FollowupSettings {
+  /** Ligado: detecta e enfileira, mas NÃO envia nada ao cliente (054). */
+  modo_ensaio: boolean
   enabled: boolean
   dias_equipamento_pronto: number
   dias_pos_venda: number
@@ -62,6 +64,8 @@ interface FollowupSettings {
 }
 
 const DEFAULT_SETTINGS: FollowupSettings = {
+  // Padrão seguro: conta sem configuração NÃO manda mensagem sozinha.
+  modo_ensaio: true,
   enabled: true,
   dias_equipamento_pronto: 3,
   dias_pos_venda: 7,
@@ -217,7 +221,7 @@ async function scanAccount(
         continue
       }
 
-      if (AUTO_CENARIOS.has(candidate.cenario)) {
+      if (AUTO_CENARIOS.has(candidate.cenario) && !settings.modo_ensaio) {
         await sendMessageToConversation(db, accountId, {
           conversationId: candidate.conversationId,
           messageType: 'text',
@@ -226,6 +230,8 @@ async function scanAccount(
         await insertSuggestion(db, accountId, candidate, generation, 'auto_sent', now)
         result.autoSent++
       } else {
+        // Modo ensaio: até o que enviaria sozinho cai na fila para a
+        // pessoa aprovar. O agente trabalha, mas o cliente não recebe.
         await insertSuggestion(db, accountId, candidate, generation, 'pending', now)
         result.queued++
       }

@@ -19,7 +19,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /** Vocabulário canônico — a IA fala nisso, nunca no nome do estágio real. */
 export type RadarStage =
   | 'novo'
+  | 'qualificando'
   | 'qualificado'
+  | 'orcamento'
   | 'negociando'
   | 'reservado'
   | 'ganho'
@@ -27,7 +29,9 @@ export type RadarStage =
 
 export const RADAR_STAGES: readonly RadarStage[] = [
   'novo',
+  'qualificando',
   'qualificado',
+  'orcamento',
   'negociando',
   'reservado',
   'ganho',
@@ -37,10 +41,12 @@ export const RADAR_STAGES: readonly RadarStage[] = [
 /** Ordem de avanço no funil. 'perdido' fica fora — é saída lateral. */
 const STAGE_ORDER: Record<RadarStage, number> = {
   novo: 0,
-  qualificado: 1,
-  negociando: 2,
-  reservado: 3,
-  ganho: 4,
+  qualificando: 1,
+  qualificado: 2,
+  orcamento: 3,
+  negociando: 4,
+  reservado: 5,
+  ganho: 6,
   perdido: 99,
 }
 
@@ -106,7 +112,11 @@ function aplicaTeto(
   funil: FunilTipo | null,
 ): RadarStage | null {
   if (funil !== 'servico') return estagio
+  // Depois de "Vai trazer" quem manda é a OS: 'ganho' agora é a ENTREGA,
+  // e as colunas do meio nem palavra de IA têm.
   if (estagio === 'ganho') return 'reservado'
+  // No serviço a coluna de valor é "Valor passado" ('orcamento').
+  if (estagio === 'negociando') return 'orcamento'
   // Quem tem máquina com problema já é lead: entra no quadro mesmo que a
   // IA não saiba dizer o ponto da conversa.
   return estagio ?? 'novo'
@@ -164,7 +174,7 @@ export async function syncDealFromRadar(
         const temSinal =
           input.valorEstimado !== null ||
           input.temperatura === 'quente' ||
-          (estagio !== null && STAGE_ORDER[estagio] >= 2)
+          (estagio !== null && STAGE_ORDER[estagio] >= STAGE_ORDER.orcamento)
         if (!temSinal) return null
       } else if (estagio === 'perdido') {
         // Serviço: barra mais baixa de propósito — quem tem máquina com
