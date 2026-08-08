@@ -66,8 +66,13 @@ export async function syncContactAvatar(
     }
 
     const { data: pub } = db.storage.from('chat-media').getPublicUrl(path)
-    const publicUrl = pub?.publicUrl
-    if (!publicUrl) return null
+    if (!pub?.publicUrl) return null
+
+    // O path é estável por contato (upsert sobrescreve), mas a URL
+    // pública passa por CDN com cache de 1h — sem o carimbo de versão,
+    // quem já viu a foto antiga (ou uma escrita ruim) continuaria vendo
+    // ela por uma hora. `?v=<timestamp>` faz o navegador buscar a nova.
+    const publicUrl = `${pub.publicUrl}?v=${Date.now()}`
 
     await db
       .from('contacts')
