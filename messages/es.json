@@ -164,7 +164,11 @@
       "deleteTitle": "¿Eliminar {n} {n, plural, one {conversación} other {conversaciones}}?",
       "deleteDesc": "El historial desaparece del CRM para todo el equipo. No se puede deshacer.",
       "cancelAction": "Cancelar",
-      "actionFailed": "Error al ejecutar la acción"
+      "actionFailed": "Error al ejecutar la acción",
+      "pinConversation": "Fijar conversación",
+      "unpinConversation": "Desfijar conversación",
+      "pinned": "Conversación fijada",
+      "unpinned": "Conversación desfijada"
     },
     "messageThread": {
       "backToConversations": "Volver a las conversaciones",

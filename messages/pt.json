@@ -164,7 +164,11 @@
       "deleteTitle": "Apagar {n} {n, plural, one {conversa} other {conversas}}?",
       "deleteDesc": "O histórico some do CRM para toda a equipe (no WhatsApp do cliente nada muda). Isso não pode ser desfeito.",
       "cancelAction": "Cancelar",
-      "actionFailed": "Falha ao executar a ação"
+      "actionFailed": "Falha ao executar a ação",
+      "pinConversation": "Fixar conversa",
+      "unpinConversation": "Desafixar conversa",
+      "pinned": "Conversa fixada no topo",
+      "unpinned": "Conversa desafixada"
     },
     "messageThread": {
       "backToConversations": "Voltar às conversas",

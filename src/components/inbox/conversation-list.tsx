@@ -19,6 +19,8 @@ import {
   Archive,
   ArchiveRestore,
   Trash2,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatWhatsAppTime } from "@/lib/app-locale";
@@ -110,7 +112,7 @@ export function ConversationList({
   const applyConversationPatch = useCallback(
     async (
       ids: string[],
-      patch: Partial<Pick<Conversation, "status" | "unread_count">>,
+      patch: Partial<Pick<Conversation, "status" | "unread_count" | "pinned_at">>,
       successMsg: string,
     ) => {
       if (ids.length === 0) return;
@@ -162,6 +164,16 @@ export function ConversationList({
   const handleRowAction = useCallback(
     (action: ConversationAction, conv: Conversation) => {
       switch (action) {
+        case "pin":
+          void applyConversationPatch(
+            [conv.id],
+            { pinned_at: new Date().toISOString() },
+            t("pinned"),
+          );
+          break;
+        case "unpin":
+          void applyConversationPatch([conv.id], { pinned_at: null }, t("unpinned"));
+          break;
         case "mark_unread":
           void applyConversationPatch([conv.id], { unread_count: 1 }, t("markedUnread"));
           break;
@@ -315,6 +327,16 @@ export function ConversationList({
         })
       );
     }
+
+    // Fixadas sobem para o topo (050). Não-fixada tem carimbo 0, então
+    // `pb - pa` já joga as fixadas para cima e, entre elas, a fixada
+    // mais recentemente na frente. Empate (ambas 0) devolve 0 e o sort
+    // estável preserva a ordem original — mais recentes primeiro.
+    result = [...result].sort((a, b) => {
+      const pa = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
+      const pb = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
+      return pb - pa;
+    });
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -710,6 +732,8 @@ export function ConversationList({
 
 /** Ações do menu de contexto / barra de seleção (réplica WhatsApp Web). */
 export type ConversationAction =
+  | "pin"
+  | "unpin"
   | "mark_unread"
   | "mark_read"
   | "close"
@@ -801,7 +825,10 @@ function ConversationItem({
           <span className="truncate text-sm font-medium text-foreground">
             {displayName}
           </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
+          <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
+            {conversation.pinned_at && <Pin className="h-3 w-3 rotate-45" />}
+            {timeAgo}
+          </span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <p className="truncate text-xs text-muted-foreground">
@@ -839,6 +866,17 @@ function ConversationItem({
             className="border-border bg-popover"
             onClick={(e) => e.stopPropagation()}
           >
+            {conversation.pinned_at ? (
+              <DropdownMenuItem onClick={() => onAction("unpin", conversation)}>
+                <PinOff className="mr-2 h-3.5 w-3.5" />
+                {t("unpinConversation")}
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={() => onAction("pin", conversation)}>
+                <Pin className="mr-2 h-3.5 w-3.5" />
+                {t("pinConversation")}
+              </DropdownMenuItem>
+            )}
             {conversation.unread_count > 0 ? (
               <DropdownMenuItem onClick={() => onAction("mark_read", conversation)}>
                 {t("markRead")}

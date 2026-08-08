@@ -190,6 +190,8 @@ export interface Conversation {
    * Null until the first outbound send picks an instance.
    */
   whatsapp_config_id?: string | null;
+  /** Fixada no topo da lista (migration 050). Null = não fixada. */
+  pinned_at?: string | null;
 }
 
 // ============================================================

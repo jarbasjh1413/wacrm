@@ -344,6 +344,8 @@ export function MessageComposer({
   const cancelledRef = useRef(false);
   /** Espelho de `recordPaused` para o timer, que roda fora do React. */
   const pausedRef = useRef(false);
+  /** Ganho zero que mantém o analisador vivo — desconectado ao parar. */
+  const silenceRef = useRef<GainNode | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Viewers (read-only role) can browse the inbox but never send.
@@ -353,6 +355,16 @@ export function MessageComposer({
   const readOnly = !canSend;
   // Media (like free-form text) is only allowed inside the 24h window.
   const inputsDisabled = readOnly || sessionExpired;
+
+  /** Solta o nó silencioso do grafo (senão fica pendurado no contexto). */
+  const releaseSilence = useCallback(() => {
+    try {
+      silenceRef.current?.disconnect();
+    } catch {
+      // Já desconectado — tudo bem.
+    }
+    silenceRef.current = null;
+  }, []);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -639,16 +651,31 @@ export function MessageComposer({
       // pendura um analisador nele para desenhar a onda. Se a versão da
       // lib não expuser esses nós, a gravação segue sem a onda.
       try {
-        const ctx = (recorder as unknown as { audioContext?: AudioContext })
-          .audioContext;
-        const source = (
-          recorder as unknown as { sourceNode?: AudioNode }
-        ).sourceNode;
+        const internals = recorder as unknown as {
+          audioContext?: AudioContext;
+          sourceNode?: AudioNode;
+        };
+        const ctx = internals.audioContext;
+        const source = internals.sourceNode;
         if (ctx && source) {
           const node = ctx.createAnalyser();
           node.fftSize = 512;
           node.smoothingTimeConstant = 0.6;
           source.connect(node);
+
+          // PEGADINHA do Web Audio: um nó sem caminho até a saída não é
+          // processado — o analisador ficava mudo e a onda, reta. Ligar
+          // num ganho ZERO que vai à saída força o navegador a
+          // processá-lo, sem produzir som nenhum.
+          const silence = ctx.createGain();
+          silence.gain.value = 0;
+          node.connect(silence);
+          silence.connect(ctx.destination);
+          silenceRef.current = silence;
+
+          // O contexto pode nascer suspenso (política de autoplay).
+          if (ctx.state === "suspended") void ctx.resume();
+
           setAnalyser(node);
         }
       } catch {
@@ -675,8 +702,9 @@ export function MessageComposer({
     setRecordPaused(false);
     pausedRef.current = false;
     setAnalyser(null);
+    releaseSilence();
     void recorderRef.current?.stop().catch(() => {});
-  }, [clearTimer]);
+  }, [clearTimer, releaseSilence]);
 
   /** Pausa/retoma sem perder o que já foi gravado (igual WhatsApp). */
   const toggleRecordPause = useCallback(() => {
@@ -707,8 +735,9 @@ export function MessageComposer({
     setRecordPaused(false);
     pausedRef.current = false;
     setAnalyser(null);
+    releaseSilence();
     void recorderRef.current?.stop().catch(() => {});
-  }, [clearTimer]);
+  }, [clearTimer, releaseSilence]);
 
   // Auto-stop at the cap so a forgotten recording can't blow the
   // upload size limit.

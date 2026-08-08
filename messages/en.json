@@ -164,7 +164,11 @@
       "deleteTitle": "Delete {n} {n, plural, one {conversation} other {conversations}}?",
       "deleteDesc": "The history disappears from the CRM for the whole team (nothing changes on the customer's WhatsApp). This cannot be undone.",
       "cancelAction": "Cancel",
-      "actionFailed": "Action failed"
+      "actionFailed": "Action failed",
+      "pinConversation": "Pin conversation",
+      "unpinConversation": "Unpin conversation",
+      "pinned": "Conversation pinned",
+      "unpinned": "Conversation unpinned"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
