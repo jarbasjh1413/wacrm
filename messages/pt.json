@@ -328,7 +328,10 @@
       "noOsOrders": "Nenhuma OS registrada ainda",
       "osNumber": "OS {id}",
       "profile": "Ficha do cliente",
-      "filledByAi": "Preenchido pela IA a partir da conversa"
+      "filledByAi": "Preenchido pela IA a partir da conversa",
+      "editValue": "Clique para editar o valor",
+      "changeStage": "Mover de estágio",
+      "dealSaveFailed": "Falha ao salvar o negócio"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",

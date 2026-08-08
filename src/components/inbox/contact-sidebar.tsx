@@ -24,6 +24,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatMediumDate, formatMediumDateTime } from "@/lib/app-locale";
 import { RadarCard } from "./radar-card";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 /** Estado atual de uma OS na lateral — evento mais recente por os_id (043). */
 interface OsOrderRow {
@@ -68,6 +69,11 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
   const [notes, setNotes] = useState<ContactNote[]>([]);
   const [osOrders, setOsOrders] = useState<OsOrderRow[]>([]);
   const [fields, setFields] = useState<ContactFieldRow[]>([]);
+  const [stages, setStages] = useState<
+    { id: string; name: string; pipeline_id: string }[]
+  >([]);
+  const [editingValue, setEditingValue] = useState<string | null>(null);
+  const [valueDraft, setValueDraft] = useState("");
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
@@ -78,7 +84,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     const supabase = createClient();
 
     // Fetch deals, notes, tags and OS events in parallel
-    const [dealsRes, notesRes, tagsRes, osRes, fieldsRes] = await Promise.all([
+    const [dealsRes, notesRes, tagsRes, osRes, fieldsRes, stagesRes] = await Promise.all([
       supabase
         .from("deals")
         .select("*, stage:pipeline_stages(*)")
@@ -104,6 +110,11 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         .from("contact_custom_values")
         .select("id, value, source, field:custom_fields(field_name)")
         .eq("contact_id", contact.id),
+      // Estágios do funil — alimentam o seletor do negócio (051).
+      supabase
+        .from("pipeline_stages")
+        .select("id, name, position, pipeline_id")
+        .order("position", { ascending: true }),
     ]);
 
     if (dealsRes.data) setDeals(dealsRes.data);
@@ -116,6 +127,17 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         if (!latestByOs.has(ev.os_id)) latestByOs.set(ev.os_id, ev);
       }
       setOsOrders([...latestByOs.values()]);
+    }
+    if (stagesRes.data) {
+      setStages(
+        (
+          stagesRes.data as { id: string; name: string; pipeline_id: string }[]
+        ).map((st) => ({
+          id: st.id,
+          name: st.name,
+          pipeline_id: st.pipeline_id,
+        })),
+      );
     }
     if (fieldsRes.data) {
       setFields(
@@ -164,6 +186,44 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     // React Compiler's inference agrees with the manual dep list —
     // fixes the `preserve-manual-memoization` lint error.
   }, [contact]);
+
+  /** Salva o valor do negócio (e trava o campo contra a IA). */
+  const saveDealValue = useCallback(
+    async (dealId: string) => {
+      const value = Number(valueDraft);
+      setEditingValue(null);
+      if (!Number.isFinite(value) || value < 0) return;
+      setDeals((prev) =>
+        prev.map((d) =>
+          d.id === dealId ? { ...d, value, value_locked_at: new Date().toISOString() } : d,
+        ),
+      );
+      const res = await fetch(`/api/deals/${dealId}/quick`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      });
+      if (!res.ok) {
+        toast.error(tSidebar("dealSaveFailed"));
+        void fetchContactData();
+      }
+    },
+    [valueDraft, tSidebar, fetchContactData],
+  );
+
+  /** Move o negócio de estágio (e trava contra a IA). */
+  const saveDealStage = useCallback(
+    async (dealId: string, stageId: string) => {
+      const res = await fetch(`/api/deals/${dealId}/quick`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage_id: stageId }),
+      });
+      if (!res.ok) toast.error(tSidebar("dealSaveFailed"));
+      void fetchContactData();
+    },
+    [tSidebar, fetchContactData],
+  );
 
   const handleAddNote = useCallback(async () => {
     if (!contact || !newNote.trim()) return;
@@ -340,7 +400,11 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
               {deals.length === 0 ? (
                 <p className="px-1 text-xs text-muted-foreground">{tSidebar("noDeals")}</p>
               ) : (
-                deals.map((deal) => (
+                deals.map((deal) => {
+                  const dealStages = stages.filter(
+                    (st) => st.pipeline_id === deal.pipeline_id,
+                  );
+                  return (
                   <div
                     key={deal.id}
                     className="rounded-lg bg-muted px-3 py-2"
@@ -348,25 +412,78 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
                     <p className="text-sm font-medium text-foreground">
                       {deal.title}
                     </p>
-                    <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                      <span>
-                        {deal.currency ?? "$"}
-                        {deal.value.toLocaleString()}
-                      </span>
-                      {deal.stage && (
-                        <span
-                          className="rounded-full px-1.5 py-0.5 text-[10px]"
-                          style={{
-                            backgroundColor: `${deal.stage.color}20`,
-                            color: deal.stage.color,
+
+                    {/* Valor e estágio editáveis aqui mesmo (051) — o que
+                        for mexido à mão trava contra a IA. */}
+                    <div className="mt-1.5 flex items-center justify-between gap-2">
+                      {editingValue === deal.id ? (
+                        <input
+                          autoFocus
+                          type="number"
+                          value={valueDraft}
+                          onChange={(e) => setValueDraft(e.target.value)}
+                          onBlur={() => void saveDealValue(deal.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void saveDealValue(deal.id);
+                            if (e.key === "Escape") setEditingValue(null);
                           }}
+                          className="w-24 rounded border border-primary/40 bg-card px-1.5 py-0.5 text-xs text-foreground outline-none"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingValue(deal.id);
+                            setValueDraft(String(deal.value ?? 0));
+                          }}
+                          title={tSidebar("editValue")}
+                          className="flex items-center gap-1 rounded px-1 py-0.5 text-xs text-foreground transition-colors hover:bg-card"
                         >
-                          {deal.stage.name}
-                        </span>
+                          R$ {Number(deal.value ?? 0).toLocaleString("pt-BR")}
+                          {deal.created_by_radar && !deal.value_locked_at && (
+                            <Sparkles className="h-2.5 w-2.5 text-primary" />
+                          )}
+                        </button>
+                      )}
+
+                      {dealStages.length > 0 ? (
+                        <select
+                          value={deal.stage_id ?? ""}
+                          onChange={(e) => void saveDealStage(deal.id, e.target.value)}
+                          title={tSidebar("changeStage")}
+                          className="max-w-[8rem] truncate rounded-full border-0 bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground outline-none"
+                          style={
+                            deal.stage
+                              ? {
+                                  backgroundColor: `${deal.stage.color}20`,
+                                  color: deal.stage.color,
+                                }
+                              : undefined
+                          }
+                        >
+                          {dealStages.map((st) => (
+                            <option key={st.id} value={st.id}>
+                              {st.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        deal.stage && (
+                          <span
+                            className="rounded-full px-1.5 py-0.5 text-[10px]"
+                            style={{
+                              backgroundColor: `${deal.stage.color}20`,
+                              color: deal.stage.color,
+                            }}
+                          >
+                            {deal.stage.name}
+                          </span>
+                        )
                       )}
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

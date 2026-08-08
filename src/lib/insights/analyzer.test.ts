@@ -161,3 +161,54 @@ describe('normalizeMomentos', () => {
     expect(normalizeMomentos({ nao: 'e array' })).toEqual([])
   })
 })
+
+describe('valor e estágio para o funil (051)', () => {
+  it('lê valor estimado e estágio da venda', () => {
+    const result = parseRadarAnalysis(
+      JSON.stringify({
+        temperatura: 'quente',
+        valor_estimado: 4500,
+        valor_origem: 'disse que pode pagar até 4.500',
+        estagio: 'negociando',
+        momentos_novos: [],
+      }),
+      NOW,
+    )
+    expect(result?.valor_estimado).toBe(4500)
+    expect(result?.estagio).toBe('negociando')
+  })
+
+  it('recusa valor absurdo (a IA confundiu modelo com preço)', () => {
+    const result = parseRadarAnalysis(
+      JSON.stringify({ temperatura: 'morno', valor_estimado: 99999999, momentos_novos: [] }),
+      NOW,
+    )
+    expect(result?.valor_estimado).toBeNull()
+  })
+
+  it('recusa valor zero ou negativo', () => {
+    for (const v of [0, -100]) {
+      const result = parseRadarAnalysis(
+        JSON.stringify({ temperatura: 'frio', valor_estimado: v, momentos_novos: [] }),
+        NOW,
+      )
+      expect(result?.valor_estimado).toBeNull()
+    }
+  })
+
+  it('aceita valor em texto com R$ e pontuação', () => {
+    const result = parseRadarAnalysis(
+      JSON.stringify({ temperatura: 'quente', valor_estimado: 'R$ 3500', momentos_novos: [] }),
+      NOW,
+    )
+    expect(result?.valor_estimado).toBe(3500)
+  })
+
+  it('ignora estágio fora do vocabulário', () => {
+    const result = parseRadarAnalysis(
+      JSON.stringify({ temperatura: 'morno', estagio: 'pensando', momentos_novos: [] }),
+      NOW,
+    )
+    expect(result?.estagio).toBeNull()
+  })
+})

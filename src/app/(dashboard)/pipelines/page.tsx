@@ -220,9 +220,11 @@ export default function PipelinesPage() {
       setDeals((prev) =>
         prev.map((d) => (d.id === dealId ? { ...d, stage_id: newStageId } : d)),
       );
+      // Arrastar o card é decisão humana: trava o estágio para o Radar
+      // (051) — a IA continua cuidando do valor, mas não move mais.
       const { error } = await supabase
         .from("deals")
-        .update({ stage_id: newStageId })
+        .update({ stage_id: newStageId, stage_locked_at: new Date().toISOString() })
         .eq("id", dealId);
       if (error) {
         toast.error(t("toastFailedMoveDeal"));

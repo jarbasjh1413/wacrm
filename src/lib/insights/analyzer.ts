@@ -25,6 +25,12 @@ import { buildConversationContext } from '@/lib/ai/context'
 import { generateReply } from '@/lib/ai/generate'
 import { logAiUsage } from '@/lib/ai/usage'
 import { featureEnabled } from '@/lib/features/guard'
+import {
+  syncDealFromRadar,
+  parseRadarStage,
+  parseValorEstimado,
+  type RadarStage,
+} from './deal-sync'
 
 export type Temperatura = 'quente' | 'morno' | 'frio' | 'indefinido'
 
@@ -82,6 +88,12 @@ export interface RadarAnalysis {
    * Só os campos marcados como ai_managed entram aqui.
    */
   campos: Record<string, string>
+  /** Quanto o cliente pode gastar, segundo a conversa (051). */
+  valor_estimado: number | null
+  /** De onde saiu esse número ("disse que pode pagar até 4.500"). */
+  valor_origem: string | null
+  /** Momento da venda no vocabulário canônico do funil (051). */
+  estagio: RadarStage | null
 }
 
 export interface RadarScanResult {
@@ -365,6 +377,12 @@ async function analyzeConversation(
             escalado_motivo: analysis.escalar_motivo,
           }
         : {}),
+      ...(analysis.valor_estimado !== null
+        ? {
+            valor_estimado: analysis.valor_estimado,
+            valor_origem: analysis.valor_origem,
+          }
+        : {}),
       ultima_analise_em: now.toISOString(),
       ultima_mensagem_analisada_em: conv.lastMessageAt,
     },
@@ -396,6 +414,28 @@ async function analyzeConversation(
       analysis.campos,
     ).catch((err) => console.error('[radar] ficha do contato falhou:', err))
   }
+  // Funil de vendas (051): o Radar mantém o negócio em dia com o que
+  // ouviu — valor e momento da venda —, respeitando o que gente mexeu.
+  if (conv.contactId) {
+    const dealId = await syncDealFromRadar(db, {
+      accountId,
+      contactId: conv.contactId,
+      conversationId: conv.id,
+      contactName: await resolveContactName(db, conv.contactId),
+      interesse: analysis.interesse,
+      valorEstimado: analysis.valor_estimado,
+      estagio: analysis.estagio,
+      temperatura: analysis.temperatura,
+      intencao: analysis.intencao,
+    })
+    if (dealId) {
+      await db
+        .from('conversation_insights')
+        .update({ deal_id: dealId })
+        .eq('conversation_id', conv.id)
+    }
+  }
+
   if (analysis.escalar_humano) {
     await escalateToHuman(db, accountId, conv.id, analysis).catch((err) =>
       console.error('[radar] escalada falhou:', err),
@@ -460,10 +500,13 @@ function buildRadarPrompt(
     '- momentos_novos: fatos NOVOS e relevantes ditos pelo cliente (nunca repita o que já está no dossiê anterior). Tipos: promessa_data (deu data/prazo), objecao (preço alto, precisa pensar, vai comparar), orcamento (quanto pode pagar/parcelar), interesse (o que procura), pessoal (contexto útil: profissão, uso, família). Texto curto, em terceira pessoa.',
     '- proximo_contato: SE o cliente deu uma data ou prazo para decidir/voltar/comprar, converta para data ISO 8601 completa (use 10:00 no fuso de Brasília como horário padrão) e explique o motivo. null se não houve promessa. IMPORTANTE: só use datas FUTURAS.',
     fichaBloco,
+    '- valor_estimado: quanto o cliente demonstrou que pode/quer gastar, em reais, só o número (ex.: 4500). Vale o teto do orçamento dele, o valor que a loja passou e ele aceitou, ou a faixa que ele citou (use o topo da faixa). null se ninguém falou de dinheiro. NUNCA confunda modelo/geração/polegadas com valor.',
+    '- valor_origem: em poucas palavras, de onde saiu esse número ("disse que pode pagar até 4.500").',
+    '- estagio: em que ponto da venda a conversa está — novo (chegou agora, ainda não sabemos o que quer), qualificado (sabemos o que ele procura), negociando (já se fala de preço/condições), reservado (pediu para separar/apartar), ganho (comprou/pagou), perdido (desistiu ou disse não). null se não for uma conversa de venda.',
     '- escalar_humano: true quando o lead ESQUENTOU e um atendente deve assumir AGORA (ex.: "consegui o dinheiro", "vou aí hoje", "pode separar que eu levo", pediu para fechar). false no resto.',
     '',
     'RESPONDA APENAS com JSON válido, sem markdown, neste formato:',
-    '{"temperatura":"quente|morno|frio|indefinido","intencao":"compra|assistencia|orcamento|informacao|pos_venda|outro|indefinido","interesse":"texto ou null","resumo":"texto ou null","momentos_novos":[{"tipo":"promessa_data","texto":"disse que compra dia 20"}],"proximo_contato":{"quando":"2026-08-20T13:00:00Z","motivo":"cliente disse que compra no dia 20"},"escalar_humano":false,"escalar_motivo":null,"campos":{"Cidade":"Canoas"}}',
+    '{"temperatura":"quente|morno|frio|indefinido","intencao":"compra|assistencia|orcamento|informacao|pos_venda|outro|indefinido","interesse":"texto ou null","resumo":"texto ou null","momentos_novos":[{"tipo":"promessa_data","texto":"disse que compra dia 20"}],"proximo_contato":{"quando":"2026-08-20T13:00:00Z","motivo":"cliente disse que compra no dia 20"},"escalar_humano":false,"escalar_motivo":null,"campos":{"Cidade":"Canoas"},"valor_estimado":4500,"valor_origem":"disse que pode pagar até 4.500","estagio":"negociando"}',
   ]
     .filter(Boolean)
     .join('\n')
@@ -593,6 +636,9 @@ export function parseRadarAnalysis(
   }
 
   return {
+    valor_estimado: parseValorEstimado(parsed.valor_estimado),
+    valor_origem: asText(parsed.valor_origem),
+    estagio: parseRadarStage(parsed.estagio),
     temperatura,
     intencao,
     interesse: asText(parsed.interesse),
@@ -820,6 +866,19 @@ async function fillContactFields(
       { onConflict: 'contact_id,custom_field_id' },
     )
   }
+}
+
+/** Nome do contato para o título do negócio. */
+async function resolveContactName(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<string> {
+  const { data } = await db
+    .from('contacts')
+    .select('name, phone')
+    .eq('id', contactId)
+    .maybeSingle()
+  return data?.name || data?.phone || 'Cliente'
 }
 
 /** Lead esquentou: avisa a equipe no sino com o motivo e o link do chat. */

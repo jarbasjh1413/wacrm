@@ -384,6 +384,12 @@ export interface Deal {
   status?: DealStatus;
   created_at: string;
   updated_at?: string;
+  /** Negócio aberto pelo Radar, não por gente (051). */
+  created_by_radar?: boolean;
+  /** Quando alguém mexeu no valor à mão — a partir daí a IA não toca. */
+  value_locked_at?: string | null;
+  /** Quando alguém arrastou o card à mão — a IA não move mais. */
+  stage_locked_at?: string | null;
   contact?: Contact;
   stage?: PipelineStage;
   assignee?: Profile;

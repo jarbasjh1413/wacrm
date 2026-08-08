@@ -328,7 +328,10 @@
       "noOsOrders": "No service orders yet",
       "osNumber": "SO {id}",
       "profile": "Customer profile",
-      "filledByAi": "Filled by the AI from the conversation"
+      "filledByAi": "Filled by the AI from the conversation",
+      "editValue": "Click to edit the value",
+      "changeStage": "Move stage",
+      "dealSaveFailed": "Failed to save the deal"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",
