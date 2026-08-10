@@ -76,6 +76,8 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
   const [editingValue, setEditingValue] = useState<string | null>(null);
   const [valueDraft, setValueDraft] = useState("");
   const [convertendo, setConvertendo] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState("");
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [addingTag, setAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
@@ -197,6 +199,28 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     // fixes the `preserve-manual-memoization` lint error.
   }, [contact]);
 
+  /** Salva o título do negócio — o Radar só escreve título na criação. */
+  const saveDealTitle = useCallback(
+    async (dealId: string) => {
+      const title = titleDraft.trim();
+      setEditingTitle(null);
+      if (!title) return;
+      setDeals((prev) =>
+        prev.map((d) => (d.id === dealId ? { ...d, title } : d)),
+      );
+      const res = await fetch(`/api/deals/${dealId}/quick`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) {
+        toast.error(tSidebar("dealSaveFailed"));
+        void fetchContactData();
+      }
+    },
+    [titleDraft, tSidebar, fetchContactData],
+  );
+
   /** Salva o valor do negócio (e trava o campo contra a IA). */
   const saveDealValue = useCallback(
     async (dealId: string) => {
@@ -243,6 +267,27 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     "quente", "morno", "frio",
     "compra", "assistência", "orçamento", "informação", "pós-venda",
   ]);
+
+  /** Tirar etiqueta do Radar = corrigir a classificação. A mesma rota do
+   * card do Radar: remove a etiqueta, congela o campo contra a IA e a
+   * correção vira exemplo no prompt das próximas análises. */
+  const removeRadarTag = useCallback(
+    async (tagName: string) => {
+      if (!conversationId) return;
+      const campo = ["quente", "morno", "frio"].includes(tagName)
+        ? "temperatura"
+        : "intencao";
+      const res = await fetch(`/api/radar/${conversationId}/classify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campo, valor: "indefinido" }),
+      });
+      if (!res.ok) toast.error(tSidebar("tagRemoveFailed"));
+      else toast.success(tSidebar("radarTagRemoved"));
+      void fetchContactData();
+    },
+    [conversationId, tSidebar, fetchContactData],
+  );
 
   const addTagToContact = useCallback(
     async (tagId: string) => {
@@ -475,15 +520,26 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
                     }}
                   >
                     {tag.name}
-                    {!doRadar && (
+                    {doRadar && conversationId ? (
                       <button
                         type="button"
-                        onClick={() => void removeTagFromContact(tag.contact_tag_id)}
-                        title={tSidebar("tagRemove")}
+                        onClick={() => void removeRadarTag(tag.name)}
+                        title={tSidebar("radarTagRemoveHint")}
                         className="opacity-0 transition-opacity group-hover/tag:opacity-70 hover:!opacity-100"
                       >
                         <X className="h-2.5 w-2.5" />
                       </button>
+                    ) : (
+                      !doRadar && (
+                        <button
+                          type="button"
+                          onClick={() => void removeTagFromContact(tag.contact_tag_id)}
+                          title={tSidebar("tagRemove")}
+                          className="opacity-0 transition-opacity group-hover/tag:opacity-70 hover:!opacity-100"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      )
                     )}
                   </span>
                 );
@@ -581,9 +637,31 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
                     className="rounded-lg bg-muted px-3 py-2"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium text-foreground">
-                        {deal.title}
-                      </p>
+                      {editingTitle === deal.id ? (
+                        <input
+                          autoFocus
+                          value={titleDraft}
+                          onChange={(e) => setTitleDraft(e.target.value)}
+                          onBlur={() => void saveDealTitle(deal.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void saveDealTitle(deal.id);
+                            if (e.key === "Escape") setEditingTitle(null);
+                          }}
+                          className="w-full rounded border border-primary/40 bg-card px-1.5 py-0.5 text-sm text-foreground outline-none"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTitle(deal.id);
+                            setTitleDraft(deal.title);
+                          }}
+                          title={tSidebar("editTitle")}
+                          className="rounded text-left text-sm font-medium text-foreground hover:bg-card"
+                        >
+                          {deal.title}
+                        </button>
+                      )}
                       {/* Sem o crachá, dois cards do mesmo cliente ficam
                           indistinguíveis (um por quadro é o caso normal). */}
                       <span className="shrink-0 rounded-full bg-card px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">

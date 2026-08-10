@@ -349,7 +349,10 @@
       "tagNewPlaceholder": "Nova etiqueta…",
       "tagCreate": "Criar",
       "tagAddFailed": "Não consegui adicionar a etiqueta",
-      "tagRemoveFailed": "Não consegui tirar a etiqueta"
+      "tagRemoveFailed": "Não consegui tirar a etiqueta",
+      "editTitle": "Clique para editar o título",
+      "radarTagRemoveHint": "Tirar — o Radar aprende que esta classificação estava errada",
+      "radarTagRemoved": "Etiqueta removida. O Radar registrou a correção e não vai recolocá-la."
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",

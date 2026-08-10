@@ -1,6 +1,6 @@
 /**
  * Ajuste rápido do negócio direto da conversa (051).
- * PATCH /api/deals/{id}/quick  body: { value?, stage_id? }
+ * PATCH /api/deals/{id}/quick  body: { title?, value?, stage_id? }
  *
  * O que gente mexe aqui fica TRAVADO para o Radar (`value_locked_at` /
  * `stage_locked_at`): a IA continua cuidando do resto do negócio, mas
@@ -35,6 +35,16 @@ export async function PATCH(
     const body = await request.json().catch(() => ({}))
     const nowIso = new Date().toISOString()
     const patch: Record<string, unknown> = {}
+
+    if (typeof body.title === 'string') {
+      const title = body.title.trim().slice(0, 160)
+      if (!title) {
+        return NextResponse.json({ error: 'Título vazio' }, { status: 400 })
+      }
+      // Sem trava: o Radar só escreve o título na CRIAÇÃO do negócio,
+      // nunca em atualização — edição humana aqui é definitiva por natureza.
+      patch.title = title
+    }
 
     if (body.value !== undefined) {
       const value = Number(body.value)

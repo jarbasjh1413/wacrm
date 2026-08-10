@@ -286,12 +286,19 @@ async function analyzeConversation(
 
   const correcoes = await buildCorrectionsBlock(db, accountId)
   const camposIa = await loadAiFields(db, accountId)
+  // O que o DONO escreveu no negócio entra no contexto da análise: se ele
+  // editou título ou valor à mão, a IA lê, trata como verdade e incorpora
+  // ao dossiê — em vez de analisar como se aquilo não existisse.
+  const negocioBloco = conv.contactId
+    ? await buildDealBlock(db, accountId, conv.contactId)
+    : ''
   const systemPrompt = buildRadarPrompt(
     settings,
     previous,
     now,
     correcoes,
     buildFichaBlock(camposIa),
+    negocioBloco,
   )
 
   const { text, usage } = await generateReply({
@@ -463,6 +470,54 @@ async function analyzeConversation(
 // ---------------------------------------------------------------------------
 // Prompt
 
+/**
+ * Os negócios abertos do contato, como o humano os deixou. Vai para o
+ * prompt para a IA LER as edições da pessoa — título ajustado, valor
+ * travado — e nunca analisar por cima delas.
+ */
+async function buildDealBlock(
+  db: SupabaseClient,
+  accountId: string,
+  contactId: string,
+): Promise<string> {
+  try {
+    const { data } = await db
+      .from('deals')
+      .select(
+        'title, value, status, value_locked_at, stage_locked_at, stage:pipeline_stages(name), pipeline:pipelines(tipo)',
+      )
+      .eq('account_id', accountId)
+      .eq('contact_id', contactId)
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(4)
+    const rows = data ?? []
+    if (rows.length === 0) return ''
+    const linhas = rows.map((d) => {
+      const stageRaw = d.stage as unknown
+      const stage = Array.isArray(stageRaw) ? stageRaw[0] : stageRaw
+      const pipeRaw = d.pipeline as unknown
+      const pipe = Array.isArray(pipeRaw) ? pipeRaw[0] : pipeRaw
+      const quadro =
+        (pipe as { tipo?: string })?.tipo === 'servico' ? 'serviço' : 'vendas'
+      const travas = [
+        d.value_locked_at ? 'valor travado pelo dono' : null,
+        d.stage_locked_at ? 'coluna travada pelo dono' : null,
+      ]
+        .filter(Boolean)
+        .join(', ')
+      return `- [${quadro}] "${d.title}" — R$ ${d.value} — coluna "${(stage as { name?: string })?.name ?? '?'}"${travas ? ` (${travas})` : ''}`
+    })
+    return [
+      'NEGÓCIOS ABERTOS DESTE CLIENTE NO FUNIL (o dono pode ter editado título e valor à mão — trate como VERDADE e incorpore ao dossiê; nunca contradiga um campo travado):',
+      ...linhas,
+      '',
+    ].join('\n')
+  } catch {
+    return ''
+  }
+}
+
 function buildRadarPrompt(
   settings: RadarSettings,
   previous: {
@@ -474,6 +529,7 @@ function buildRadarPrompt(
   now: Date,
   correcoes: string,
   fichaBloco: string,
+  negocioBloco = '',
 ): string {
   const hoje = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
   const diaSemana = now.toLocaleDateString('pt-BR', {
@@ -495,6 +551,7 @@ function buildRadarPrompt(
     previous
       ? `DOSSIÊ ANTERIOR (atualize, não repita):\n- temperatura: ${previous.temperatura}\n- intenção: ${previous.intencao ?? '—'}\n- interesse: ${previous.interesse ?? '—'}\n- resumo: ${previous.resumo ?? '—'}\n`
       : 'Este lead ainda não tem dossiê — monte o primeiro.\n',
+    negocioBloco,
     `HOJE É ${diaSemana}, ${hoje} (fuso de Brasília). Use esta data para resolver referências como "dia 20", "semana que vem", "sábado".`,
     '',
     'TIPOS DE ATENDIMENTO (intenção) — cada um tem um caminho diferente na loja:',
