@@ -354,7 +354,8 @@
       "radarTagRemoveHint": "Tirar — o Radar aprende que esta classificação estava errada",
       "radarTagRemoved": "Etiqueta removida. O Radar registrou a correção e não vai recolocá-la.",
       "fieldEdit": "Clique para editar — o que você escrever, a IA não sobrescreve",
-      "fieldSaveFailed": "Não consegui salvar o campo"
+      "fieldSaveFailed": "Não consegui salvar o campo",
+      "fieldEmpty": "preencher…"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",

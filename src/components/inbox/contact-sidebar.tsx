@@ -95,8 +95,16 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     const supabase = createClient();
 
     // Fetch deals, notes, tags and OS events in parallel
-    const [dealsRes, notesRes, tagsRes, osRes, fieldsRes, stagesRes, allTagsRes] =
-      await Promise.all([
+    const [
+      dealsRes,
+      notesRes,
+      tagsRes,
+      osRes,
+      fieldDefsRes,
+      fieldValuesRes,
+      stagesRes,
+      allTagsRes,
+    ] = await Promise.all([
       supabase
         .from("deals")
         .select("*, stage:pipeline_stages(*), pipeline:pipelines(tipo)")
@@ -117,10 +125,16 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         .eq("contact_id", contact.id)
         .order("data_evento", { ascending: false })
         .limit(50),
-      // Ficha do cliente: valores + o nome do campo (048).
+      // Ficha do cliente: TODOS os campos definidos da conta (048) —
+      // a ficha é padrão em todo contato; o que não tem valor aparece
+      // vazio, pronto para preencher.
+      supabase
+        .from("custom_fields")
+        .select("id, field_name")
+        .order("created_at", { ascending: true }),
       supabase
         .from("contact_custom_values")
-        .select("id, custom_field_id, value, source, field:custom_fields(field_name)")
+        .select("id, custom_field_id, value, source")
         .eq("contact_id", contact.id),
       // Estágios do funil — alimentam o seletor do negócio (051).
       supabase
@@ -153,36 +167,27 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         })),
       );
     }
-    if (fieldsRes.data) {
-      setFields(
-        (fieldsRes.data as Record<string, unknown>[])
-          .map((row) => {
-            const fieldRaw = row.field;
-            const field = Array.isArray(fieldRaw) ? fieldRaw[0] : fieldRaw;
-            const name = (field as { field_name?: string })?.field_name;
-            const value = row.value as string | null;
-            if (!name || !value?.trim()) return null;
-            return {
-              id: row.id as string,
-              custom_field_id: row.custom_field_id as string,
-              name,
-              value: value.trim(),
-              source: (row.source as string) ?? "human",
-            };
-          })
-          .filter((f): f is ContactFieldRow => f !== null)
-          .sort((a, b) => a.name.localeCompare(b.name)),
+    if (fieldDefsRes.data) {
+      const valores = new Map(
+        ((fieldValuesRes.data ?? []) as Record<string, unknown>[]).map((v) => [
+          v.custom_field_id as string,
+          v,
+        ]),
       );
-    }
-    if (allTagsRes.data) setAllTags(allTagsRes.data as Tag[]);
-    if (tagsRes.data) {
-      const mapped = tagsRes.data
-        .filter((ct: Record<string, unknown>) => ct.tags)
-        .map((ct: Record<string, unknown>) => ({
-          ...(ct.tags as Tag),
-          contact_tag_id: ct.id as string,
-        }));
-      setTags(mapped);
+      setFields(
+        (fieldDefsRes.data as { id: string; field_name: string }[]).map(
+          (def) => {
+            const v = valores.get(def.id);
+            return {
+              id: (v?.id as string) ?? `sem-valor-${def.id}`,
+              custom_field_id: def.id,
+              name: def.field_name,
+              value: ((v?.value as string) ?? "").trim(),
+              source: (v?.source as string) ?? "",
+            };
+          },
+        ),
+      );
     }
   }, [contact]);
 
@@ -209,7 +214,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     async (row: ContactFieldRow) => {
       const value = fieldDraft.trim();
       setEditingField(null);
-      if (!contact || value === row.value) return;
+      if (!contact || value === row.value || (!value && !row.value)) return;
       const supabase = createClient();
       const { error } = await supabase.from("contact_custom_values").upsert(
         {
@@ -489,9 +494,9 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
           {/* Divider */}
           <div className="my-4 border-t border-border" />
 
-          {/* Ficha do cliente — o que a IA foi deduzindo da conversa
-              (cidade, profissão, equipamento) mais o que a equipe
-              preencheu à mão. Some quando não há nada ainda. */}
+          {/* Ficha do cliente — padrão em TODO contato: os campos da conta
+              aparecem sempre, vazios ou não. A IA preenche o que deduzir da
+              conversa; o resto fica pronto para a equipe preencher. */}
           {fields.length > 0 && (
             <>
               <div>
@@ -529,9 +534,12 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
                               setFieldDraft(f.value);
                             }}
                             title={tSidebar("fieldEdit")}
-                            className="truncate rounded px-0.5 text-left hover:bg-muted"
+                            className={cn(
+                              "truncate rounded px-0.5 text-left hover:bg-muted",
+                              !f.value && "italic text-muted-foreground/60",
+                            )}
                           >
-                            {f.value}
+                            {f.value || tSidebar("fieldEmpty")}
                           </button>
                         )}
                         {f.source === "ai" && editingField !== f.id && (
