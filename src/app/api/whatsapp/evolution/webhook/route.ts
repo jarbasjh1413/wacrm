@@ -58,6 +58,9 @@ interface EvolutionMessageKey {
   fromMe?: boolean
   id?: string
   participant?: string
+  /** Quando o chat usa LID (número oculto), o JID real vem aqui (055+). */
+  remoteJidAlt?: string
+  addressingMode?: string
 }
 
 interface EvolutionMessageData {
@@ -193,7 +196,20 @@ type ConfigRow = any
 async function handleMessageUpsert(config: ConfigRow, data: EvolutionMessageData) {
   if (!data?.key?.remoteJid || !data.key.id) return
 
-  const remoteJid = data.key.remoteJid
+  // O WhatsApp vem migrando contatos para o formato LID (número oculto):
+  // remoteJid chega como "1312...@lid" e o JID de telefone real vem em
+  // remoteJidAlt. Sem esta tradução, mensagens de clientes LID eram
+  // DESCARTADAS em silêncio — o CRM ficava surdo só para eles.
+  let remoteJid = data.key.remoteJid
+  if (remoteJid.endsWith('@lid')) {
+    const alt = data.key.remoteJidAlt
+    if (alt?.endsWith('@s.whatsapp.net')) {
+      remoteJid = alt
+    } else {
+      console.warn(`[evolution-webhook] LID sem remoteJidAlt — mensagem pulada (${remoteJid})`)
+      return
+    }
+  }
   // Group and broadcast chats are out of scope (the CRM is 1:1).
   if (!remoteJid.endsWith('@s.whatsapp.net')) return
 
