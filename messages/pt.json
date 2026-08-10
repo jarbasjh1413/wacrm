@@ -355,7 +355,15 @@
       "radarTagRemoved": "Etiqueta removida. O Radar registrou a correção e não vai recolocá-la.",
       "fieldEdit": "Clique para editar — o que você escrever, a IA não sobrescreve",
       "fieldSaveFailed": "Não consegui salvar o campo",
-      "fieldEmpty": "preencher…"
+      "fieldEmpty": "preencher…",
+      "dealAdd": "Criar negócio",
+      "dealFunilVendas": "Funil de vendas",
+      "dealFunilServico": "Funil de serviço",
+      "dealTitlePlaceholder": "Título (ex.: Maria — notebook i5)",
+      "dealValuePlaceholder": "Valor em R$ (opcional — a IA preenche se ouvir)",
+      "dealCreate": "Criar",
+      "dealCreated": "Negócio criado no funil escolhido.",
+      "dealCreateFailed": "Não consegui criar o negócio"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",

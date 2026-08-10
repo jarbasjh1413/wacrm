@@ -355,7 +355,15 @@
       "radarTagRemoved": "Tag removed. The Radar recorded the correction and will not re-apply it.",
       "fieldEdit": "Click to edit — the AI never overwrites what you write",
       "fieldSaveFailed": "Could not save the field",
-      "fieldEmpty": "fill in…"
+      "fieldEmpty": "fill in…",
+      "dealAdd": "Create deal",
+      "dealFunilVendas": "Sales pipeline",
+      "dealFunilServico": "Service pipeline",
+      "dealTitlePlaceholder": "Title (e.g. Maria — i5 laptop)",
+      "dealValuePlaceholder": "Value in R$ (optional — AI fills it if heard)",
+      "dealCreate": "Create",
+      "dealCreated": "Deal created in the chosen pipeline.",
+      "dealCreateFailed": "Could not create the deal"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",

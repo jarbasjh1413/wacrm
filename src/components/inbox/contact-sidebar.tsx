@@ -79,6 +79,11 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
   const [convertendo, setConvertendo] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
+  const [pipelines, setPipelines] = useState<{ id: string; tipo: string | null }[]>([]);
+  const [addingDeal, setAddingDeal] = useState(false);
+  const [newDealTitle, setNewDealTitle] = useState("");
+  const [newDealValue, setNewDealValue] = useState("");
+  const [newDealFunil, setNewDealFunil] = useState<"vendas" | "servico">("vendas");
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldDraft, setFieldDraft] = useState("");
   const [allTags, setAllTags] = useState<Tag[]>([]);
@@ -102,6 +107,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
       osRes,
       fieldDefsRes,
       fieldValuesRes,
+      pipelinesRes,
       stagesRes,
       allTagsRes,
     ] = await Promise.all([
@@ -136,7 +142,12 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         .from("contact_custom_values")
         .select("id, custom_field_id, value, source")
         .eq("contact_id", contact.id),
-      // Estágios do funil — alimentam o seletor do negócio (051).
+      // Funis e estágios — alimentam o seletor do negócio (051) e a
+      // criação manual por funil (pedido do Jarbas, 08/08).
+      supabase
+        .from("pipelines")
+        .select("id, tipo, created_at")
+        .order("created_at", { ascending: true }),
       supabase
         .from("pipeline_stages")
         .select("id, name, position, pipeline_id")
@@ -155,6 +166,11 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         if (!latestByOs.has(ev.os_id)) latestByOs.set(ev.os_id, ev);
       }
       setOsOrders([...latestByOs.values()]);
+    }
+    if (pipelinesRes.data) {
+      setPipelines(
+        pipelinesRes.data as { id: string; tipo: string | null }[],
+      );
     }
     if (stagesRes.data) {
       setStages(
@@ -207,6 +223,57 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     // React Compiler's inference agrees with the manual dep list —
     // fixes the `preserve-manual-memoization` lint error.
   }, [contact]);
+
+  /** Cria um negócio manualmente no funil escolhido. */
+  const createDeal = useCallback(async () => {
+    if (!contact || !accountId) return;
+    const alvo = pipelines.find((p) => (p.tipo ?? "vendas") === newDealFunil);
+    if (!alvo) return;
+    // stages já vem ordenado por position — o primeiro é a coluna inicial.
+    const primeira = stages.filter((st) => st.pipeline_id === alvo.id)[0];
+    if (!primeira) return;
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    const valor = Number(newDealValue) || 0;
+    const { error } = await supabase.from("deals").insert({
+      account_id: accountId,
+      user_id: session.user.id,
+      pipeline_id: alvo.id,
+      stage_id: primeira.id,
+      contact_id: contact.id,
+      conversation_id: conversationId ?? null,
+      title: newDealTitle.trim() || contact.name || contact.phone,
+      value: valor,
+      currency: "BRL",
+      status: "open",
+      // Valor digitado à mão já nasce travado — a IA não mexe. Sem valor,
+      // ela fica livre para preencher quando ouvir na conversa.
+      value_locked_at: valor > 0 ? new Date().toISOString() : null,
+    });
+    if (error) {
+      toast.error(tSidebar("dealCreateFailed"));
+      return;
+    }
+    setAddingDeal(false);
+    setNewDealTitle("");
+    setNewDealValue("");
+    toast.success(tSidebar("dealCreated"));
+    void fetchContactData();
+  }, [
+    contact,
+    accountId,
+    pipelines,
+    stages,
+    newDealFunil,
+    newDealTitle,
+    newDealValue,
+    conversationId,
+    tSidebar,
+    fetchContactData,
+  ]);
 
   /** Salva um campo da ficha. source='human' — a IA nunca sobrescreve
    * valor humano (o analisador pula source='human', regra da 048). */
@@ -676,9 +743,80 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
             <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               <DollarSign className="h-3 w-3" />
               {tSidebar("deals")}
+              <button
+                type="button"
+                onClick={() => {
+                  setNewDealTitle(contact.name || "");
+                  setAddingDeal((v) => !v);
+                }}
+                title={tSidebar("dealAdd")}
+                className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
             </div>
+
+            {addingDeal && (
+              <div className="mt-2 space-y-2 rounded-md bg-muted p-2">
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["vendas", "servico"] as const).map((tipo) => {
+                    const existe = pipelines.some(
+                      (p) => (p.tipo ?? "vendas") === tipo,
+                    );
+                    if (!existe) return null;
+                    return (
+                      <button
+                        key={tipo}
+                        type="button"
+                        onClick={() => setNewDealFunil(tipo)}
+                        className={cn(
+                          "rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                          newDealFunil === tipo
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border bg-card text-muted-foreground",
+                        )}
+                      >
+                        {tipo === "vendas"
+                          ? tSidebar("dealFunilVendas")
+                          : tSidebar("dealFunilServico")}
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  value={newDealTitle}
+                  onChange={(e) => setNewDealTitle(e.target.value)}
+                  placeholder={tSidebar("dealTitlePlaceholder")}
+                  className="h-7 w-full rounded border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+                />
+                <input
+                  type="number"
+                  value={newDealValue}
+                  onChange={(e) => setNewDealValue(e.target.value)}
+                  placeholder={tSidebar("dealValuePlaceholder")}
+                  className="h-7 w-full rounded border border-border bg-card px-2 text-xs text-foreground outline-none focus:border-primary"
+                />
+                <div className="flex justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAddingDeal(false)}
+                    className="rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-card"
+                  >
+                    {tSidebar("cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void createDeal()}
+                    className="rounded bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    {tSidebar("dealCreate")}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="mt-2 space-y-2">
-              {deals.length === 0 ? (
+              {deals.length === 0 && !addingDeal ? (
                 <p className="px-1 text-xs text-muted-foreground">{tSidebar("noDeals")}</p>
               ) : (
                 deals.map((deal) => {

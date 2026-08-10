@@ -355,7 +355,15 @@
       "radarTagRemoved": "Etiqueta quitada. El Radar registró la corrección y no la repondrá.",
       "fieldEdit": "Clic para editar — la IA nunca sobrescribe lo que escribes",
       "fieldSaveFailed": "No se pudo guardar el campo",
-      "fieldEmpty": "completar…"
+      "fieldEmpty": "completar…",
+      "dealAdd": "Crear negocio",
+      "dealFunilVendas": "Embudo de ventas",
+      "dealFunilServico": "Embudo de servicio",
+      "dealTitlePlaceholder": "Título (ej.: María — notebook i5)",
+      "dealValuePlaceholder": "Valor en R$ (opcional — la IA lo llena si lo oye)",
+      "dealCreate": "Crear",
+      "dealCreated": "Negocio creado en el embudo elegido.",
+      "dealCreateFailed": "No se pudo crear el negocio"
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está pausado aquí",
