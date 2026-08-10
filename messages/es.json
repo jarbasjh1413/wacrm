@@ -331,7 +331,17 @@
       "filledByAi": "Rellenado por la IA",
       "editValue": "Clic para editar el valor",
       "changeStage": "Mover de etapa",
-      "dealSaveFailed": "Error al guardar"
+      "dealSaveFailed": "Error al guardar",
+      "funilVendas": "venta",
+      "funilServico": "reparación",
+      "virouVenda": "↷ Se volvió venta",
+      "virouServico": "↷ Se volvió reparación",
+      "motivoConversao": "El cliente cambió de idea",
+      "motivoFunilErrado": "La IA clasificó mal",
+      "confirmConvert": "Convertir",
+      "cancel": "Cancelar",
+      "convertDone": "Negocio creado en el otro embudo y vinculado a este.",
+      "convertFailed": "Error al convertir el negocio"
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está pausado aquí",
@@ -619,7 +629,13 @@
       "toastFailedMoveDeal": "No se pudo mover el negocio",
       "toastFailedCreatePipeline": "No se pudo crear el embudo",
       "toastPipelineCreated": "Embudo creado",
-      "toastNotLinkedToAccount": "Tu perfil no está vinculado a una cuenta."
+      "toastNotLinkedToAccount": "Tu perfil no está vinculado a una cuenta.",
+      "tipoVendas": "Embudo de ventas",
+      "tipoServico": "Embudo de servicio",
+      "radarUsaEste": "el Radar usa este",
+      "pipelineTipo": "Tipo de embudo",
+      "tipoVendasDesc": "Venta de equipos: la IA sigue del lead a la compra.",
+      "tipoServicoDesc": "Reparaciones: la IA trae la máquina, el sistema OS hace el resto."
     },
     "board": {
       "dropDealHere": "Suelta un negocio aquí",
@@ -628,7 +644,10 @@
     "card": {
       "noContact": "Sin contacto",
       "won": "Ganado",
-      "lost": "Perdido"
+      "lost": "Perdido",
+      "tempQuente": "Lead caliente",
+      "tempMorno": "Lead tibio",
+      "tempFrio": "Lead frío"
     },
     "form": {
       "editDeal": "Editar negocio",
@@ -695,7 +714,8 @@
       "toastMoveOrDeleteDeals": "Primero mueve o elimina los negocios en esta etapa",
       "toastFailedDeleteStage": "No se pudo eliminar la etapa",
       "toastFailedDeletePipeline": "No se pudo eliminar el embudo",
-      "toastDeleted": "Embudo eliminado"
+      "toastDeleted": "Embudo eliminado",
+      "toastPipelineHasDeals": "Este embudo tiene {count} negocio(s). Muévelos o elimínalos antes de borrar el embudo."
     },
     "analytics": {
       "totalDeals": "Total de negocios",
@@ -2014,7 +2034,10 @@
       "coldPlaceholder": "Ej.: solo mira, desapareció hace más de una semana.",
       "save": "Guardar criterios",
       "saved": "Criterios guardados.",
-      "saveFailed": "Error al guardar"
+      "saveFailed": "Error al guardar",
+      "ensaioTitle": "Modo ensayo",
+      "ensaioOnDesc": "ACTIVADO: la IA detecta, escribe y encola mensajes, pero NADA llega al cliente. Todo espera tu aprobación en Follow-ups.",
+      "ensaioOffDesc": "DESACTIVADO: equipo listo, posventa y promesas de retorno se envían automáticamente. Los demás escenarios siguen pidiendo aprobación."
     },
     "features": {
       "title": "Recursos automáticos",

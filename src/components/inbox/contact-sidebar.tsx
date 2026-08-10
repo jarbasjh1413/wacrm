@@ -74,6 +74,8 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
   >([]);
   const [editingValue, setEditingValue] = useState<string | null>(null);
   const [valueDraft, setValueDraft] = useState("");
+  const [convertendo, setConvertendo] = useState<string | null>(null);
+  const [motivoConversao, setMotivoConversao] = useState("virou_venda");
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
@@ -87,7 +89,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     const [dealsRes, notesRes, tagsRes, osRes, fieldsRes, stagesRes] = await Promise.all([
       supabase
         .from("deals")
-        .select("*, stage:pipeline_stages(*)")
+        .select("*, stage:pipeline_stages(*), pipeline:pipelines(tipo)")
         .eq("contact_id", contact.id)
         .order("created_at", { ascending: false }),
       supabase
@@ -223,6 +225,25 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
       void fetchContactData();
     },
     [tSidebar, fetchContactData],
+  );
+
+  /** Abre o card no outro quadro, amarra os dois e fecha este com motivo. */
+  const converterDeal = useCallback(
+    async (dealId: string, para: "vendas" | "servico") => {
+      setConvertendo(null);
+      const res = await fetch(`/api/deals/${dealId}/converter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ para, motivo: motivoConversao }),
+      });
+      if (!res.ok) {
+        toast.error(tSidebar("convertFailed"));
+      } else {
+        toast.success(tSidebar("convertDone"));
+      }
+      void fetchContactData();
+    },
+    [motivoConversao, tSidebar, fetchContactData],
   );
 
   const handleAddNote = useCallback(async () => {
@@ -404,14 +425,34 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
                   const dealStages = stages.filter(
                     (st) => st.pipeline_id === deal.pipeline_id,
                   );
+                  const tipo =
+                    (deal as unknown as { pipeline?: { tipo?: string } })
+                      .pipeline?.tipo === "servico"
+                      ? "servico"
+                      : "vendas";
+                  const destino = tipo === "servico" ? "vendas" : "servico";
                   return (
                   <div
                     key={deal.id}
                     className="rounded-lg bg-muted px-3 py-2"
                   >
-                    <p className="text-sm font-medium text-foreground">
-                      {deal.title}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-foreground">
+                        {deal.title}
+                      </p>
+                      {/* Sem o crachá, dois cards do mesmo cliente ficam
+                          indistinguíveis (um por quadro é o caso normal). */}
+                      <span className="shrink-0 rounded-full bg-card px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {tipo === "servico"
+                          ? tSidebar("funilServico")
+                          : tSidebar("funilVendas")}
+                      </span>
+                    </div>
+                    {deal.os_id && (
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        OS #{deal.os_id}
+                      </p>
+                    )}
 
                     {/* Valor e estágio editáveis aqui mesmo (051) — o que
                         for mexido à mão trava contra a IA. */}
@@ -481,6 +522,53 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
                         )
                       )}
                     </div>
+
+                    {deal.status === "open" &&
+                      (convertendo === deal.id ? (
+                        <div className="mt-2 space-y-1.5 rounded-md bg-card p-2">
+                          <select
+                            value={motivoConversao}
+                            onChange={(e) => setMotivoConversao(e.target.value)}
+                            className="w-full rounded border-0 bg-muted px-1.5 py-1 text-[11px] text-foreground outline-none"
+                          >
+                            <option value={destino === "vendas" ? "virou_venda" : "virou_servico"}>
+                              {tSidebar("motivoConversao")}
+                            </option>
+                            <option value="funil_errado">{tSidebar("motivoFunilErrado")}</option>
+                          </select>
+                          <div className="flex justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setConvertendo(null)}
+                              className="rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
+                            >
+                              {tSidebar("cancel")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void converterDeal(deal.id, destino)}
+                              className="rounded bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
+                            >
+                              {tSidebar("confirmConvert")}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMotivoConversao(
+                              destino === "vendas" ? "virou_venda" : "virou_servico",
+                            );
+                            setConvertendo(deal.id);
+                          }}
+                          className="mt-1.5 text-[11px] font-medium text-primary hover:underline"
+                        >
+                          {destino === "vendas"
+                            ? tSidebar("virouVenda")
+                            : tSidebar("virouServico")}
+                        </button>
+                      ))}
                   </div>
                   );
                 })

@@ -184,7 +184,18 @@ export function PipelineSettings({
 
   async function handleDeletePipeline() {
     setDeleting(true);
-    // ON DELETE CASCADE handles deals + stages.
+    // deals.pipeline_id é ON DELETE CASCADE: apagar o funil apaga os
+    // negócios dele em silêncio. A mesma guarda que handleRemoveStage já
+    // tinha — funil com negócio não se apaga, se esvazia primeiro.
+    const { count } = await supabase
+      .from("deals")
+      .select("id", { count: "exact", head: true })
+      .eq("pipeline_id", pipeline.id);
+    if (count && count > 0) {
+      setDeleting(false);
+      toast.error(t("toastPipelineHasDeals", { count }));
+      return;
+    }
     const { error } = await supabase
       .from("pipelines")
       .delete()

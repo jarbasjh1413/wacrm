@@ -493,7 +493,13 @@
       "toastFailedMoveDeal": "딜을 이동하지 못했습니다",
       "toastFailedCreatePipeline": "파이프라인을 만들지 못했습니다",
       "toastPipelineCreated": "파이프라인이 생성되었습니다",
-      "toastNotLinkedToAccount": "프로필이 계정에 연결되어 있지 않습니다."
+      "toastNotLinkedToAccount": "프로필이 계정에 연결되어 있지 않습니다.",
+      "tipoVendas": "영업 파이프라인",
+      "tipoServico": "서비스 파이프라인",
+      "radarUsaEste": "레이더가 사용 중",
+      "pipelineTipo": "파이프라인 유형",
+      "tipoVendasDesc": "장비 판매: AI가 리드부터 구매까지 추적합니다.",
+      "tipoServicoDesc": "수리: AI가 기기를 가져오고 나머지는 OS 시스템이 처리합니다."
     },
     "board": {
       "dropDealHere": "여기에 딜을 놓으세요",
@@ -502,7 +508,10 @@
     "card": {
       "noContact": "연락처 없음",
       "won": "성사",
-      "lost": "실패"
+      "lost": "실패",
+      "tempQuente": "뜨거운 리드",
+      "tempMorno": "미지근한 리드",
+      "tempFrio": "차가운 리드"
     },
     "form": {
       "editDeal": "딜 수정",
@@ -568,7 +577,8 @@
       "toastMoveOrDeleteDeals": "먼저 이 단계의 딜을 이동하거나 삭제하세요",
       "toastFailedDeleteStage": "단계를 삭제하지 못했습니다",
       "toastFailedDeletePipeline": "파이프라인을 삭제하지 못했습니다",
-      "toastDeleted": "파이프라인이 삭제되었습니다"
+      "toastDeleted": "파이프라인이 삭제되었습니다",
+      "toastPipelineHasDeals": "이 파이프라인에는 {count}개의 거래가 있습니다. 먼저 거래를 이동하거나 삭제하세요."
     },
     "analytics": {
       "totalDeals": "전체 딜",

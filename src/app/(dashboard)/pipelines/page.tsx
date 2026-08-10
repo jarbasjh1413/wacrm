@@ -36,14 +36,47 @@ import { useTranslations } from "next-intl";
 // agent+. The two CTAs gate on different `useCan` capabilities,
 // not on different copy.
 
-// Spec-defined seed — name and color per the product spec.
-const SPEC_DEFAULT_STAGES = [
-  { name: "New Lead", color: "#3b82f6", position: 0 }, // blue
-  { name: "Qualified", color: "#eab308", position: 1 }, // yellow
-  { name: "Proposal Sent", color: "#f97316", position: 2 }, // orange
-  { name: "Negotiation", color: "#8b5cf6", position: 3 }, // purple
-  { name: "Won", color: "#22c55e", position: 4 }, // green
-];
+// Seeds por tipo de funil (054). Antes o funil criado pela tela nascia em
+// inglês e SEM radar_stage — mudo para a IA. Agora nasce igual ao da
+// migration: em português e com cada coluna já mapeada para o motor certo
+// (radar_stage = a IA move; os_situacao = a Ordem de Serviço move).
+const SEED_STAGES: Record<
+  "vendas" | "servico",
+  { name: string; color: string; position: number; radar_stage: string | null; os_situacao?: string }[]
+> = {
+  vendas: [
+    { name: "Novo lead", color: "#3b82f6", position: 0, radar_stage: "novo" },
+    { name: "Qualificando", color: "#94a3b8", position: 1, radar_stage: "qualificando" },
+    { name: "Qualificado", color: "#eab308", position: 2, radar_stage: "qualificado" },
+    { name: "Orçamento enviado", color: "#f97316", position: 3, radar_stage: "orcamento" },
+    { name: "Negociando", color: "#8b5cf6", position: 4, radar_stage: "negociando" },
+    { name: "Reservado", color: "#f59e0b", position: 5, radar_stage: "reservado" },
+    { name: "Comprou", color: "#22c55e", position: 6, radar_stage: "ganho" },
+    { name: "Perdido", color: "#6b7280", position: 7, radar_stage: "perdido" },
+  ],
+  servico: [
+    { name: "Novo conserto", color: "#3b82f6", position: 0, radar_stage: "novo" },
+    { name: "Problema identificado", color: "#eab308", position: 1, radar_stage: "qualificado" },
+    { name: "Valor passado", color: "#f97316", position: 2, radar_stage: "orcamento" },
+    { name: "Vai trazer / vamos buscar", color: "#a855f7", position: 3, radar_stage: "reservado", os_situacao: "aguardando_recebimento" },
+    { name: "Máquina na loja", color: "#22c55e", position: 4, radar_stage: null, os_situacao: "na_bancada" },
+    { name: "Orçamento enviado (OS)", color: "#8b5cf6", position: 5, radar_stage: null, os_situacao: "aguardando_cliente" },
+    { name: "Pronta pra retirar", color: "#ef4444", position: 6, radar_stage: null, os_situacao: "pronto" },
+    { name: "Entregue", color: "#15803d", position: 7, radar_stage: "ganho", os_situacao: "finalizada" },
+    { name: "Não veio", color: "#6b7280", position: 8, radar_stage: "perdido" },
+  ],
+};
+
+function seedPayload(pipelineId: string, tipo: "vendas" | "servico") {
+  return SEED_STAGES[tipo].map((s) => ({
+    pipeline_id: pipelineId,
+    name: s.name,
+    color: s.color,
+    position: s.position,
+    radar_stage: s.radar_stage,
+    os_situacao: s.os_situacao ?? null,
+  }));
+}
 
 export default function PipelinesPage() {
   const t = useTranslations("Pipelines.page");
@@ -54,6 +87,7 @@ export default function PipelinesPage() {
 
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
+  const [newPipelineTipo, setNewPipelineTipo] = useState<"vendas" | "servico">("vendas");
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +138,25 @@ export default function PipelinesPage() {
         .select("*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*)")
         .eq("pipeline_id", pipelineId)
         .order("created_at", { ascending: false });
-      return (data ?? []) as Deal[];
+      const deals = (data ?? []) as Deal[];
+      // Temperatura do Radar por conversa — vira a bolinha no card. Uma
+      // consulta só para o board inteiro; falha aqui não derruba o board.
+      const convIds = deals.map((d) => d.conversation_id).filter(Boolean);
+      if (convIds.length > 0) {
+        const { data: insights } = await supabase
+          .from("conversation_insights")
+          .select("conversation_id, temperatura")
+          .in("conversation_id", convIds as string[]);
+        const porConversa = new Map(
+          (insights ?? []).map((i) => [i.conversation_id, i.temperatura]),
+        );
+        for (const d of deals) {
+          d.temperatura = d.conversation_id
+            ? ((porConversa.get(d.conversation_id) as Deal["temperatura"]) ?? null)
+            : null;
+        }
+      }
+      return deals;
     },
     [supabase],
   );
@@ -120,7 +172,7 @@ export default function PipelinesPage() {
 
     const { data: pipeline, error } = await supabase
       .from("pipelines")
-      .insert({ user_id: user.id, account_id: accountId, name: "Sales Pipeline" })
+      .insert({ user_id: user.id, account_id: accountId, name: "Vendas", tipo: "vendas" })
       .select()
       .single();
 
@@ -129,13 +181,9 @@ export default function PipelinesPage() {
       return null;
     }
 
-    const stagesPayload = SPEC_DEFAULT_STAGES.map((s) => ({
-      pipeline_id: pipeline.id,
-      name: s.name,
-      color: s.color,
-      position: s.position,
-    }));
-    await supabase.from("pipeline_stages").insert(stagesPayload);
+    await supabase
+      .from("pipeline_stages")
+      .insert(seedPayload(pipeline.id, "vendas"));
 
     return pipeline as Pipeline;
   }, [supabase, accountId]);
@@ -271,7 +319,7 @@ export default function PipelinesPage() {
 
     const { data: pipeline, error } = await supabase
       .from("pipelines")
-      .insert({ user_id: user.id, account_id: accountId, name })
+      .insert({ user_id: user.id, account_id: accountId, name, tipo: newPipelineTipo })
       .select()
       .single();
 
@@ -281,13 +329,9 @@ export default function PipelinesPage() {
       return;
     }
 
-    const stagesPayload = SPEC_DEFAULT_STAGES.map((s) => ({
-      pipeline_id: pipeline.id,
-      name: s.name,
-      color: s.color,
-      position: s.position,
-    }));
-    await supabase.from("pipeline_stages").insert(stagesPayload);
+    await supabase
+      .from("pipeline_stages")
+      .insert(seedPayload(pipeline.id, newPipelineTipo));
 
     setNewPipelineName("");
     setNewPipelineOpen(false);
@@ -298,6 +342,15 @@ export default function PipelinesPage() {
   }
 
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId);
+  // O Radar alimenta o funil MAIS ANTIGO de cada tipo (deal-sync). A lista
+  // já vem ordenada por created_at, então é o primeiro de cada.
+  const radarUsa = new Set(
+    ["vendas", "servico"]
+      .map((tipo) => pipelines.find((p) => (p.tipo ?? "vendas") === tipo)?.id)
+      .filter(Boolean),
+  );
+  const tipoLabel = (p: Pipeline) =>
+    (p.tipo ?? "vendas") === "servico" ? t("tipoServico") : t("tipoVendas");
 
   if (loading) {
     return (
@@ -329,6 +382,11 @@ export default function PipelinesPage() {
               <span className="font-semibold">
                 {selectedPipeline?.name ?? t("selectPipeline")}
               </span>
+              {selectedPipeline && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  {tipoLabel(selectedPipeline)}
+                </span>
+              )}
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -351,7 +409,11 @@ export default function PipelinesPage() {
                   }
                 >
                   <GitBranch className="mr-2 h-3.5 w-3.5" />
-                  {p.name}
+                  <span className="flex-1 truncate">{p.name}</span>
+                  <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">
+                    {tipoLabel(p)}
+                    {radarUsa.has(p.id) && ` · ${t("radarUsaEste")}`}
+                  </span>
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator className="bg-border" />
@@ -442,6 +504,28 @@ export default function PipelinesPage() {
                 if (e.key === "Enter") handleCreatePipeline();
               }}
             />
+            <Label className="mt-4 block text-muted-foreground">{t("pipelineTipo")}</Label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {(["vendas", "servico"] as const).map((tipo) => (
+                <button
+                  key={tipo}
+                  type="button"
+                  onClick={() => setNewPipelineTipo(tipo)}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                    newPipelineTipo === tipo
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  <span className="font-medium">
+                    {tipo === "vendas" ? t("tipoVendas") : t("tipoServico")}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {tipo === "vendas" ? t("tipoVendasDesc") : t("tipoServicoDesc")}
+                  </span>
+                </button>
+              ))}
+            </div>
             <p className="mt-2 text-xs text-muted-foreground">
               {t("defaultStagesDesc")}
             </p>

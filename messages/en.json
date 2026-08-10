@@ -331,7 +331,17 @@
       "filledByAi": "Filled by the AI from the conversation",
       "editValue": "Click to edit the value",
       "changeStage": "Move stage",
-      "dealSaveFailed": "Failed to save the deal"
+      "dealSaveFailed": "Failed to save the deal",
+      "funilVendas": "sale",
+      "funilServico": "repair",
+      "virouVenda": "↷ Became a sale",
+      "virouServico": "↷ Became a repair",
+      "motivoConversao": "Customer changed their mind",
+      "motivoFunilErrado": "AI misclassified it",
+      "confirmConvert": "Convert",
+      "cancel": "Cancel",
+      "convertDone": "Deal created in the other pipeline and linked to this one.",
+      "convertFailed": "Failed to convert the deal"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",
@@ -619,7 +629,13 @@
       "toastFailedMoveDeal": "Failed to move deal",
       "toastFailedCreatePipeline": "Failed to create pipeline",
       "toastPipelineCreated": "Pipeline created",
-      "toastNotLinkedToAccount": "Your profile is not linked to an account."
+      "toastNotLinkedToAccount": "Your profile is not linked to an account.",
+      "tipoVendas": "Sales pipeline",
+      "tipoServico": "Service pipeline",
+      "radarUsaEste": "Radar uses this one",
+      "pipelineTipo": "Pipeline type",
+      "tipoVendasDesc": "Selling equipment: AI follows from lead to purchase.",
+      "tipoServicoDesc": "Repairs: AI brings the machine in, the OS system does the rest."
     },
     "board": {
       "dropDealHere": "Drop a deal here",
@@ -628,7 +644,10 @@
     "card": {
       "noContact": "No contact",
       "won": "Won",
-      "lost": "Lost"
+      "lost": "Lost",
+      "tempQuente": "Hot lead",
+      "tempMorno": "Warm lead",
+      "tempFrio": "Cold lead"
     },
     "form": {
       "editDeal": "Edit Deal",
@@ -695,7 +714,8 @@
       "toastMoveOrDeleteDeals": "Move or delete deals in this stage first",
       "toastFailedDeleteStage": "Failed to delete stage",
       "toastFailedDeletePipeline": "Failed to delete pipeline",
-      "toastDeleted": "Pipeline deleted"
+      "toastDeleted": "Pipeline deleted",
+      "toastPipelineHasDeals": "This pipeline has {count} deal(s). Move or delete them before deleting the pipeline."
     },
     "analytics": {
       "totalDeals": "Total Deals",
@@ -2041,7 +2061,10 @@
       "coldPlaceholder": "e.g. just browsing, gone for over a week, said \"maybe next year\".",
       "save": "Save criteria",
       "saved": "Criteria saved.",
-      "saveFailed": "Failed to save criteria"
+      "saveFailed": "Failed to save criteria",
+      "ensaioTitle": "Rehearsal mode",
+      "ensaioOnDesc": "ON: the AI detects, writes and queues messages, but NOTHING reaches the customer. Everything waits for your approval on the Follow-ups page.",
+      "ensaioOffDesc": "OFF: device-ready, post-sale and return promises are sent automatically. Other scenarios still require approval."
     },
     "features": {
       "title": "Automatic features",

@@ -463,11 +463,18 @@ async function detectLeadFrio(
   now: Date,
 ): Promise<Candidate[]> {
   const out: Candidate[] = []
+  // Dois consertos num só: 'active' não existe no CHECK de deals (só
+  // open/won/lost) — o cenário estava MORTO desde o template. E ao acordar
+  // ele, o filtro de funil é obrigatório: sem ele, cobraríamos VENDA de
+  // quem está com a máquina na bancada (o card de serviço também é 'open').
   const { data: deals } = await db
     .from('deals')
-    .select('id, title, value, contact_id, conversation_id, updated_at, stage:pipeline_stages(name)')
+    .select(
+      'id, title, value, contact_id, conversation_id, updated_at, stage:pipeline_stages(name), pipelines!inner(tipo)',
+    )
     .eq('account_id', accountId)
-    .eq('status', 'active')
+    .eq('status', 'open')
+    .eq('pipelines.tipo', 'vendas')
     .lt('updated_at', daysAgoIso(settings.dias_lead_frio, now))
     .limit(100)
   for (const deal of deals ?? []) {

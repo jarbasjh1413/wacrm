@@ -399,6 +399,8 @@ export interface Deal {
   motivo_perda_obs?: string | null;
   /** O negócio do outro quadro, quando alguém converteu (053). */
   relacionado_deal_id?: string | null;
+  /** Temperatura do Radar (carregada do dossiê da conversa, não persiste). */
+  temperatura?: string | null;
   /** Espelho da ordem de serviço. Vitrine, não fonte da verdade (053). */
   os_id?: string | null;
   os_status?: string | null;

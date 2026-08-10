@@ -331,7 +331,17 @@
       "filledByAi": "Preenchido pela IA a partir da conversa",
       "editValue": "Clique para editar o valor",
       "changeStage": "Mover de estágio",
-      "dealSaveFailed": "Falha ao salvar o negócio"
+      "dealSaveFailed": "Falha ao salvar o negócio",
+      "funilVendas": "venda",
+      "funilServico": "conserto",
+      "virouVenda": "↷ Virou venda",
+      "virouServico": "↷ Virou conserto",
+      "motivoConversao": "Cliente mudou de ideia",
+      "motivoFunilErrado": "A IA classificou errado",
+      "confirmConvert": "Converter",
+      "cancel": "Cancelar",
+      "convertDone": "Negócio criado no outro funil e amarrado a este.",
+      "convertFailed": "Falha ao converter o negócio"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",
@@ -619,7 +629,13 @@
       "toastFailedMoveDeal": "Falha ao mover negócio",
       "toastFailedCreatePipeline": "Falha ao criar funil",
       "toastPipelineCreated": "Funil criado",
-      "toastNotLinkedToAccount": "Seu perfil não está vinculado a uma conta."
+      "toastNotLinkedToAccount": "Seu perfil não está vinculado a uma conta.",
+      "tipoVendas": "Funil de vendas",
+      "tipoServico": "Funil de serviço",
+      "radarUsaEste": "o Radar usa este",
+      "pipelineTipo": "Tipo do funil",
+      "tipoVendasDesc": "Vender equipamentos: a IA acompanha do lead à compra.",
+      "tipoServicoDesc": "Consertos: a IA traz a máquina, a OS faz o resto."
     },
     "board": {
       "dropDealHere": "Solte um negócio aqui",
@@ -628,7 +644,10 @@
     "card": {
       "noContact": "Sem contato",
       "won": "Ganho",
-      "lost": "Perdido"
+      "lost": "Perdido",
+      "tempQuente": "Lead quente",
+      "tempMorno": "Lead morno",
+      "tempFrio": "Lead frio"
     },
     "form": {
       "editDeal": "Editar Negócio",
@@ -695,7 +714,8 @@
       "toastMoveOrDeleteDeals": "Mova ou exclua os negócios desta etapa primeiro",
       "toastFailedDeleteStage": "Falha ao excluir etapa",
       "toastFailedDeletePipeline": "Falha ao excluir funil",
-      "toastDeleted": "Funil excluído"
+      "toastDeleted": "Funil excluído",
+      "toastPipelineHasDeals": "Este funil tem {count} negócio(s). Mova ou apague os negócios antes de excluir o funil."
     },
     "analytics": {
       "totalDeals": "Total de Negócios",
@@ -2041,7 +2061,10 @@
       "coldPlaceholder": "Ex.: disse que é só pesquisa, sumiu há mais de uma semana, falou que fica pro ano que vem.",
       "save": "Salvar critérios",
       "saved": "Critérios salvos — a IA já usa a partir da próxima análise.",
-      "saveFailed": "Falha ao salvar os critérios"
+      "saveFailed": "Falha ao salvar os critérios",
+      "ensaioTitle": "Modo ensaio",
+      "ensaioOnDesc": "LIGADO: a IA detecta, escreve e enfileira as mensagens, mas NADA sai para o cliente. Tudo espera a sua aprovação na página de Follow-ups.",
+      "ensaioOffDesc": "DESLIGADO: equipamento pronto, pós-venda e promessas de retorno são enviados automaticamente. Os demais cenários continuam pedindo aprovação."
     },
     "features": {
       "title": "Recursos automáticos",

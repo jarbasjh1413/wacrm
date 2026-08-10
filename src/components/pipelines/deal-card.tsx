@@ -23,10 +23,19 @@ function initials(name?: string, fallback?: string) {
   return source.charAt(0).toUpperCase();
 }
 
+// A temperatura NÃO é coluna — um lead pode estar em "Negociando" e frio,
+// ou em "Qualificando" e quentíssimo. Por isso ela é a bolinha no card.
+const TEMPERATURA: Record<string, { cor: string; chave: string }> = {
+  quente: { cor: "#ef4444", chave: "tempQuente" },
+  morno: { cor: "#f59e0b", chave: "tempMorno" },
+  frio: { cor: "#38bdf8", chave: "tempFrio" },
+};
+
 export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
   const t = useTranslations("Pipelines.card");
   const contactLabel = deal.contact?.name || deal.contact?.phone || t("noContact");
   const assigneeLabel = deal.assignee?.full_name || null;
+  const temp = deal.temperatura ? TEMPERATURA[deal.temperatura] : undefined;
 
   return (
     <button
@@ -53,6 +62,14 @@ export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
 
       <div className="flex items-start justify-between gap-2">
         <h4 className="flex-1 text-sm font-semibold leading-snug text-foreground break-words">
+          {temp && (
+            <span
+              title={t(temp.chave)}
+              aria-label={t(temp.chave)}
+              className="mr-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full align-baseline"
+              style={{ backgroundColor: temp.cor }}
+            />
+          )}
           {deal.title}
         </h4>
         {deal.status === "won" && (
@@ -88,6 +105,14 @@ export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
           </span>
         )}
       </div>
+
+      {deal.os_id && (
+        <div className="mt-2">
+          <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            OS #{deal.os_id}
+          </span>
+        </div>
+      )}
 
       {assigneeLabel && (
         <div className="mt-2 flex items-center justify-end">

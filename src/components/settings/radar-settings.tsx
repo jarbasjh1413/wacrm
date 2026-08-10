@@ -25,6 +25,7 @@ import {
 
 interface RadarForm {
   radar_enabled: boolean;
+  modo_ensaio: boolean;
   contexto_negocio: string;
   criterios_quente: string;
   criterios_morno: string;
@@ -33,6 +34,7 @@ interface RadarForm {
 
 const EMPTY: RadarForm = {
   radar_enabled: true,
+  modo_ensaio: true,
   contexto_negocio: '',
   criterios_quente: '',
   criterios_morno: '',
@@ -51,12 +53,13 @@ export function RadarSettings() {
     const { data } = await supabase
       .from('followup_settings')
       .select(
-        'radar_enabled, contexto_negocio, criterios_quente, criterios_morno, criterios_frio',
+        'radar_enabled, modo_ensaio, contexto_negocio, criterios_quente, criterios_morno, criterios_frio',
       )
       .maybeSingle();
     if (data) {
       setForm({
         radar_enabled: data.radar_enabled ?? true,
+        modo_ensaio: data.modo_ensaio ?? true,
         contexto_negocio: data.contexto_negocio ?? '',
         criterios_quente: data.criterios_quente ?? '',
         criterios_morno: data.criterios_morno ?? '',
@@ -79,6 +82,7 @@ export function RadarSettings() {
       {
         account_id: accountId,
         radar_enabled: form.radar_enabled,
+        modo_ensaio: form.modo_ensaio,
         contexto_negocio: form.contexto_negocio.trim() || null,
         criterios_quente: form.criterios_quente.trim() || null,
         criterios_morno: form.criterios_morno.trim() || null,
@@ -129,6 +133,32 @@ export function RadarSettings() {
       </CardHeader>
 
       <CardContent className="space-y-5">
+        {/* Modo ensaio (054): a diferença entre "a IA trabalha" e "a IA
+            fala com cliente". Pedido explícito do dono. */}
+        <div
+          className={`flex items-start justify-between gap-4 rounded-lg border p-4 ${
+            form.modo_ensaio
+              ? 'border-amber-500/40 bg-amber-500/10'
+              : 'border-border bg-muted'
+          }`}
+        >
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              {t('ensaioTitle')}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {form.modo_ensaio ? t('ensaioOnDesc') : t('ensaioOffDesc')}
+            </p>
+          </div>
+          <Switch
+            checked={form.modo_ensaio}
+            onCheckedChange={(checked) =>
+              setForm((f) => ({ ...f, modo_ensaio: checked }))
+            }
+            aria-label={t('ensaioTitle')}
+          />
+        </div>
+
         <div className="space-y-1.5">
           <Label className="text-muted-foreground">{t('contextLabel')}</Label>
           <Textarea
