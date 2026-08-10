@@ -388,6 +388,35 @@ Env vars novas: `EVOLUTION_BASE_URL`, `EVOLUTION_GLOBAL_APIKEY`,
   Evolution DB → CRM com dedupe por whatsapp_message_id. Detalhe: conferir
   settings de persistência da Evolution (hoje ela guarda pouco — findMessages
   do Eduardo retornou só 3 msgs).
+- **DIÁRIO DE BORDO DA IA por cliente** (ideia do Jarbas, 08/08/2026): "uma
+  central onde a IA entrega, do lado de cada cliente, o relatório do que ela
+  fez e qual o próximo estágio — 'mandei uma mensagem pro fulano, iniciarei o
+  follow-up daqui a tantos dias' — como se fosse ela mesma contando". Ou seja:
+  uma linha do tempo POR CONTATO das AÇÕES da IA (não das mensagens do
+  cliente, que é a Jornada de hoje), escrita em primeira pessoa e com o
+  próximo passo planejado sempre visível.
+  Desenho proposto quando formos fazer:
+  (1) Quase tudo já existe em tabelas separadas — análises do Radar
+  (conversation_insights.ultima_analise_em + dossiê), follow-ups enviados e
+  agendados (followup_suggestions: cenario, status auto_sent/pending,
+  agendado_para), cards criados/movidos (deals.created_by_radar + updated_at),
+  etiquetas aplicadas, campos preenchidos (contact_custom_values.source='ai'),
+  promessas na fila (proximo_contato_em). Falta UM lugar que conte isso em
+  ordem e em português.
+  (2) Criar tabela `ia_diario` (account_id, contact_id, conversation_id, tipo,
+  texto em 1ª pessoa, proximo_passo, proximo_passo_em, ref_id, created_at) e
+  cada motor grava uma linha ao agir — o analisador, o engine de follow-up, o
+  deal-sync e a ponte de OS. Barato: é um INSERT a mais em pontos que já
+  existem, sem chamada extra de IA (o texto sai de template: "Analisei a
+  conversa e classifiquei como morno/compra", "Enviei o follow-up de
+  equipamento pronto", "Movi o negócio para Reservado porque combinou de
+  trazer sábado", "Próximo: cobrar a promessa em 12/08 às 10h").
+  (3) UI: aba/expansão "O que a IA fez" na lateral da conversa (junto da
+  Jornada) + visão geral em /followups ou página própria, filtrável por
+  contato. Sempre com o PRÓXIMO passo no topo ("iniciarei o follow-up em N
+  dias"), que é a metade que mais tranquiliza quem opera.
+  (4) Respeita o modo ensaio: no ensaio a linha diz "PREPAREI a mensagem e
+  deixei na fila para aprovação" — nunca "enviei" sem ter enviado.
 - Ações CRM → OS na lateral da conversa (ideia do Jarbas, 05/08/2026): botão
   "Aprovar orçamento" (e afins) direto no card da OS — o CRM chama o sistema
   de OS, que muda o status e confirma de volta via os-events. Retroalimentação
