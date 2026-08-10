@@ -352,7 +352,9 @@
       "tagRemoveFailed": "Could not remove the tag",
       "editTitle": "Click to edit the title",
       "radarTagRemoveHint": "Remove — the Radar learns this classification was wrong",
-      "radarTagRemoved": "Tag removed. The Radar recorded the correction and will not re-apply it."
+      "radarTagRemoved": "Tag removed. The Radar recorded the correction and will not re-apply it.",
+      "fieldEdit": "Click to edit — the AI never overwrites what you write",
+      "fieldSaveFailed": "Could not save the field"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",

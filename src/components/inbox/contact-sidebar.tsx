@@ -49,6 +49,7 @@ const OS_STATUS_STYLES: Record<string, string> = {
 /** Campo da ficha do cliente — `source` marca o que veio da IA (048). */
 interface ContactFieldRow {
   id: string;
+  custom_field_id: string;
   name: string;
   value: string;
   source: string;
@@ -78,6 +79,8 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
   const [convertendo, setConvertendo] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [fieldDraft, setFieldDraft] = useState("");
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [addingTag, setAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
@@ -117,7 +120,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
       // Ficha do cliente: valores + o nome do campo (048).
       supabase
         .from("contact_custom_values")
-        .select("id, value, source, field:custom_fields(field_name)")
+        .select("id, custom_field_id, value, source, field:custom_fields(field_name)")
         .eq("contact_id", contact.id),
       // Estágios do funil — alimentam o seletor do negócio (051).
       supabase
@@ -161,6 +164,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
             if (!name || !value?.trim()) return null;
             return {
               id: row.id as string,
+              custom_field_id: row.custom_field_id as string,
               name,
               value: value.trim(),
               source: (row.source as string) ?? "human",
@@ -198,6 +202,30 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     // React Compiler's inference agrees with the manual dep list —
     // fixes the `preserve-manual-memoization` lint error.
   }, [contact]);
+
+  /** Salva um campo da ficha. source='human' — a IA nunca sobrescreve
+   * valor humano (o analisador pula source='human', regra da 048). */
+  const saveField = useCallback(
+    async (row: ContactFieldRow) => {
+      const value = fieldDraft.trim();
+      setEditingField(null);
+      if (!contact || value === row.value) return;
+      const supabase = createClient();
+      const { error } = await supabase.from("contact_custom_values").upsert(
+        {
+          contact_id: contact.id,
+          custom_field_id: row.custom_field_id,
+          value,
+          source: "human",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "contact_id,custom_field_id" },
+      );
+      if (error) toast.error(tSidebar("fieldSaveFailed"));
+      void fetchContactData();
+    },
+    [contact, fieldDraft, tSidebar, fetchContactData],
+  );
 
   /** Salva o título do negócio — o Radar só escreve título na criação. */
   const saveDealTitle = useCallback(
@@ -481,8 +509,32 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
                         {f.name}
                       </dt>
                       <dd className="flex min-w-0 items-center gap-1 text-xs text-foreground">
-                        <span className="truncate">{f.value}</span>
-                        {f.source === "ai" && (
+                        {editingField === f.id ? (
+                          <input
+                            autoFocus
+                            value={fieldDraft}
+                            onChange={(e) => setFieldDraft(e.target.value)}
+                            onBlur={() => void saveField(f)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void saveField(f);
+                              if (e.key === "Escape") setEditingField(null);
+                            }}
+                            className="w-32 rounded border border-primary/40 bg-card px-1.5 py-0.5 text-xs text-foreground outline-none"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingField(f.id);
+                              setFieldDraft(f.value);
+                            }}
+                            title={tSidebar("fieldEdit")}
+                            className="truncate rounded px-0.5 text-left hover:bg-muted"
+                          >
+                            {f.value}
+                          </button>
+                        )}
+                        {f.source === "ai" && editingField !== f.id && (
                           <span title={tSidebar("filledByAi")}>
                             <Sparkles className="h-2.5 w-2.5 shrink-0 text-primary" />
                           </span>
@@ -638,16 +690,28 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
                   >
                     <div className="flex items-start justify-between gap-2">
                       {editingTitle === deal.id ? (
-                        <input
+                        <textarea
                           autoFocus
+                          rows={3}
                           value={titleDraft}
                           onChange={(e) => setTitleDraft(e.target.value)}
+                          onFocus={(e) =>
+                            // Cursor no fim, sem selecionar tudo — e o
+                            // título inteiro visível, não só o rabo dele.
+                            e.currentTarget.setSelectionRange(
+                              e.currentTarget.value.length,
+                              e.currentTarget.value.length,
+                            )
+                          }
                           onBlur={() => void saveDealTitle(deal.id)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") void saveDealTitle(deal.id);
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void saveDealTitle(deal.id);
+                            }
                             if (e.key === "Escape") setEditingTitle(null);
                           }}
-                          className="w-full rounded border border-primary/40 bg-card px-1.5 py-0.5 text-sm text-foreground outline-none"
+                          className="w-full resize-none rounded border border-primary/40 bg-card px-1.5 py-1 text-sm leading-snug text-foreground outline-none"
                         />
                       ) : (
                         <button

@@ -352,7 +352,9 @@
       "tagRemoveFailed": "No se pudo quitar la etiqueta",
       "editTitle": "Clic para editar el título",
       "radarTagRemoveHint": "Quitar — el Radar aprende que esta clasificación estaba mal",
-      "radarTagRemoved": "Etiqueta quitada. El Radar registró la corrección y no la repondrá."
+      "radarTagRemoved": "Etiqueta quitada. El Radar registró la corrección y no la repondrá.",
+      "fieldEdit": "Clic para editar — la IA nunca sobrescribe lo que escribes",
+      "fieldSaveFailed": "No se pudo guardar el campo"
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está pausado aquí",
