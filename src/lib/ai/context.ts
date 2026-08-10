@@ -5,6 +5,7 @@ import { aiContextMessageLimit } from './defaults'
 interface DbMessage {
   sender_type: 'customer' | 'agent' | 'bot'
   content_text: string | null
+  content_type?: string
 }
 
 /**
@@ -23,9 +24,11 @@ export async function buildConversationContext(
 ): Promise<ChatMessage[]> {
   const { data, error } = await db
     .from('messages')
-    .select('sender_type, content_text')
+    .select('sender_type, content_text, content_type')
     .eq('conversation_id', conversationId)
-    .eq('content_type', 'text')
+    // Áudio entra quando tem transcrição (055) — sem ela o filtro de
+    // texto vazio abaixo o descarta, como antes.
+    .in('content_type', ['text', 'audio'])
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -36,6 +39,9 @@ export async function buildConversationContext(
     .filter((m) => m.content_text && m.content_text.trim())
     .map((m) => ({
       role: m.sender_type === 'customer' ? 'user' : 'assistant',
-      content: m.content_text!.trim(),
+      content:
+        m.content_type === 'audio'
+          ? `[áudio transcrito] ${m.content_text!.trim()}`
+          : m.content_text!.trim(),
     }))
 }

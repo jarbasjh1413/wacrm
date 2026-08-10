@@ -582,3 +582,93 @@ export async function getMediaBase64(args: GetMediaBase64Args): Promise<MediaBas
   }
   return { base64: data.base64, mimeType: data.mimetype, fileName: data.fileName }
 }
+
+// ---------------------------------------------------------------------------
+// Transcrição de áudio (speechToText) — docs/multimidia-ia.md item 1.
+// A Evolution usa o Whisper da OpenAI por baixo (URL e modelo fixos no
+// código dela). Exige OPENAI_ENABLED=true no ambiente da Evolution.
+
+export interface ConfigureSpeechToTextArgs extends EvolutionConn {
+  /** Chave da OpenAI do dono (BYO). Nunca logar. */
+  openaiApiKey: string
+  enabled: boolean
+}
+
+const CRED_NAME = 'crm-transcricao'
+
+/**
+ * Cria (ou reaproveita) a credencial OpenAI na instância e liga/desliga o
+ * speechToText. Devolve mensagem de erro legível em vez de lançar — a tela
+ * mostra o texto para o dono.
+ */
+export async function configureSpeechToText(
+  args: ConfigureSpeechToTextArgs,
+): Promise<{ ok: boolean; error?: string }> {
+  const headers = {
+    'Content-Type': 'application/json',
+    apikey: args.apikey,
+  }
+  const base = `${args.baseUrl}/openai`
+
+  try {
+    // 1. Credencial: procura a nossa; cria se não existir.
+    let credsId: string | null = null
+    const lista = await fetch(`${base}/creds/${args.instanceName}`, { headers })
+    if (lista.status === 400) {
+      const body = await lista.text()
+      if (body.includes('disabled')) {
+        return {
+          ok: false,
+          error:
+            'O módulo OpenAI está desligado na Evolution (OPENAI_ENABLED=false no servidor).',
+        }
+      }
+    }
+    if (lista.ok) {
+      const rows = (await lista.json()) as Array<{ id?: string; name?: string }>
+      credsId = rows.find((r) => r.name === CRED_NAME)?.id ?? null
+    }
+    if (!credsId && args.enabled) {
+      const criada = await fetch(`${base}/creds/${args.instanceName}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: CRED_NAME, apiKey: args.openaiApiKey }),
+      })
+      if (!criada.ok) {
+        return { ok: false, error: `Credencial recusada: ${await criada.text()}` }
+      }
+      const body = (await criada.json()) as { id?: string }
+      credsId = body.id ?? null
+    }
+    if (!credsId && args.enabled) {
+      return { ok: false, error: 'Evolution não devolveu o id da credencial.' }
+    }
+
+    // 2. Liga/desliga o speechToText da instância.
+    const settings = await fetch(`${base}/settings/${args.instanceName}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        openaiCredsId: credsId,
+        speechToText: args.enabled,
+        // Campos do bot conversacional da Evolution — não usamos o bot,
+        // só a transcrição, mas a validação do endpoint os exige.
+        expire: 0,
+        keywordFinish: '',
+        delayMessage: 0,
+        unknownMessage: '',
+        listeningFromMe: false,
+        stopBotFromMe: false,
+        keepOpen: false,
+        debounceTime: 0,
+        ignoreJids: [],
+      }),
+    })
+    if (!settings.ok) {
+      return { ok: false, error: `Settings recusados: ${await settings.text()}` }
+    }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}

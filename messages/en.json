@@ -2153,6 +2153,19 @@
           "desc": "The AI interprets photos and PDFs customers send."
         }
       }
+    },
+    "transcricao": {
+      "title": "Audio transcription",
+      "description": "Customer voice notes become text automatically — shown in the conversation and readable by the Radar. Estimated cost: ~R$5/month at the shop volume (billed by OpenAI).",
+      "howTo": "Create a key at platform.openai.com → API keys and paste it below. Transcription uses OpenAI Whisper inside Evolution.",
+      "keyLabel": "OpenAI key",
+      "privacy": "The key is encrypted at rest and never returned to this screen.",
+      "turnOn": "Enable transcription",
+      "turnOff": "Disable",
+      "activeDesc": "Transcription ON — new incoming voice notes arrive with text attached.",
+      "enabled": "Transcription enabled on the WhatsApp instances.",
+      "disabled": "Transcription disabled and key removed.",
+      "failed": "Something went wrong — check the error message."
     }
   },
   "roles": {

@@ -3,12 +3,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildConversationContext } from './context'
 
 /** Minimal fake matching the query chain in buildConversationContext:
- *  from().select().eq().eq().order().limit() → { data, error }. */
+ *  from().select().eq().in().order().limit() → { data, error }. */
 function fakeDb(rows: unknown[]): SupabaseClient {
   const chain = {
     from: () => chain,
     select: () => chain,
     eq: () => chain,
+    in: () => chain,
     order: () => chain,
     limit: () => Promise.resolve({ data: rows, error: null }),
   }
@@ -49,5 +50,19 @@ describe('buildConversationContext', () => {
       'conv-1',
     )
     expect(out).toEqual([{ role: 'user', content: 'real' }])
+  })
+
+  it('inclui áudio transcrito com prefixo e descarta áudio sem texto', async () => {
+    const out = await buildConversationContext(
+      fakeDb([
+        { sender_type: 'customer', content_text: 'quero orçamento', content_type: 'text' },
+        { sender_type: 'customer', content_text: 'meu notebook não liga', content_type: 'audio' },
+        { sender_type: 'customer', content_text: null, content_type: 'audio' },
+      ]),
+      'conv-1',
+    )
+    expect(out).toHaveLength(2)
+    expect(out[0].content).toBe('[áudio transcrito] meu notebook não liga')
+    expect(out[1].content).toBe('quero orçamento')
   })
 })

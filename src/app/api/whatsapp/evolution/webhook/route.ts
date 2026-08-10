@@ -72,6 +72,8 @@ interface EvolutionMessageData {
     videoMessage?: { caption?: string; mimetype?: string }
     documentMessage?: { caption?: string; mimetype?: string; fileName?: string }
     audioMessage?: { mimetype?: string }
+    /** Transcrição do speechToText da Evolution (055), quando ligado. */
+    speechToText?: string
     stickerMessage?: { mimetype?: string }
     locationMessage?: {
       degreesLatitude?: number
@@ -435,8 +437,12 @@ function parseMessageContent(data: EvolutionMessageData): {
     }
   }
   if (m.audioMessage) {
+    // Com o speechToText ligado (055) a Evolution manda a transcrição
+    // junto. Guardar como texto do áudio faz o Radar e o histórico da IA
+    // enxergarem o que foi FALADO — antes o áudio era invisível para eles.
+    const transcricao = m.speechToText?.trim()
     return {
-      contentText: null,
+      contentText: transcricao ? transcricao : null,
       contentType: 'audio',
       media: { mimeType: m.audioMessage.mimetype },
     }

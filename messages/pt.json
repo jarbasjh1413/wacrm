@@ -2153,6 +2153,19 @@
           "desc": "A IA interpreta fotos e PDFs que o cliente manda."
         }
       }
+    },
+    "transcricao": {
+      "title": "Transcrição de áudio",
+      "description": "Os áudios que os clientes mandam viram texto automaticamente — aparecem na conversa e o Radar passa a entendê-los. Custo estimado: ~R$ 5/mês no volume da loja (cobrado pela OpenAI).",
+      "howTo": "Crie uma chave em platform.openai.com → API keys e cole abaixo. A transcrição usa o Whisper da OpenAI por dentro da Evolution.",
+      "keyLabel": "Chave da OpenAI",
+      "privacy": "A chave é criptografada no banco e nunca aparece de volta nesta tela.",
+      "turnOn": "Ligar transcrição",
+      "turnOff": "Desligar",
+      "activeDesc": "Transcrição LIGADA — os próximos áudios recebidos chegam com o texto junto.",
+      "enabled": "Transcrição ligada nas instâncias do WhatsApp.",
+      "disabled": "Transcrição desligada e chave removida.",
+      "failed": "Não deu certo — veja a mensagem de erro."
     }
   },
   "Notifications": {

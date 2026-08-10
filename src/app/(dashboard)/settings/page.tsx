@@ -15,6 +15,7 @@ import { EvolutionInstances } from '@/components/settings/evolution-instances';
 import { QuickRepliesManager } from '@/components/settings/quick-replies-manager';
 import { ScriptsManager } from '@/components/settings/scripts-manager';
 import { RadarSettings } from '@/components/settings/radar-settings';
+import { TranscricaoSettings } from '@/components/settings/transcricao-settings';
 import { FeaturesCenter } from '@/components/settings/features-center';
 import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel';
 import { DealsSettings } from '@/components/settings/deals-settings';
@@ -80,7 +81,12 @@ function SettingsPageInner() {
     // Evolution engine replaced the Meta config screen (Fase 1). The
     // old WhatsAppConfig component stays in the tree until item 5's
     // Meta cleanup, but is no longer reachable.
-    whatsapp: <EvolutionInstances />,
+    whatsapp: (
+      <>
+        <EvolutionInstances />
+        <TranscricaoSettings />
+      </>
+    ),
     'quick-replies': <QuickRepliesManager />,
     radar: <RadarSettings />,
     scripts: <ScriptsManager />,
