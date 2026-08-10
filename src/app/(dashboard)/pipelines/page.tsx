@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Pipeline, PipelineStage, Deal } from "@/types";
 import { PipelineBoard } from "@/components/pipelines/pipeline-board";
+import { LeadsSemCard } from "@/components/pipelines/leads-sem-card";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
 import { PipelineAnalytics } from "@/components/pipelines/pipeline-analytics";
@@ -477,6 +478,13 @@ export default function PipelinesPage() {
       ) : (
         <>
           <PipelineAnalytics stages={stages} deals={deals} />
+          {(selectedPipeline?.tipo ?? "vendas") === "servico" && (
+            <LeadsSemCard
+              pipelineId={selectedPipelineId}
+              firstStageId={stages[0]?.id ?? null}
+              onDealCreated={refreshDeals}
+            />
+          )}
           <PipelineBoard
             stages={stages}
             deals={deals}

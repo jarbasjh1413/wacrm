@@ -753,6 +753,13 @@
       "lostThisMonth": "Perdidos Este Mês",
       "lostThisMonthTooltip": "Negócios marcados como Perdido desde o primeiro dia do mês atual.",
       "howCalculated": "Como {label} é calculado"
+    },
+    "leadsSemCard": {
+      "title": "{count} conversa(s) de conserto sem card neste funil",
+      "hint": "A IA identificou intenção de conserto mas o card não existe — crie com um clique ou ignore se não for lead.",
+      "createCard": "Criar card",
+      "created": "Card criado no funil de serviço.",
+      "createFailed": "Não consegui criar o card"
     }
   },
   "Broadcasts": {

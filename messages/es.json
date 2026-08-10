@@ -753,6 +753,13 @@
       "lostThisMonth": "Perdidos este mes",
       "lostThisMonthTooltip": "Negocios marcados como Perdidos desde el primer día del mes actual.",
       "howCalculated": "Cómo se calcula {label}"
+    },
+    "leadsSemCard": {
+      "title": "{count} conversación(es) de reparación sin tarjeta en este embudo",
+      "hint": "La IA detectó intención de reparación pero no existe tarjeta — créala con un clic o ignora si no es lead.",
+      "createCard": "Crear tarjeta",
+      "created": "Tarjeta creada en el embudo de servicio.",
+      "createFailed": "No se pudo crear la tarjeta"
     }
   },
   "Broadcasts": {

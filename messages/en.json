@@ -753,6 +753,13 @@
       "lostThisMonth": "Lost This Month",
       "lostThisMonthTooltip": "Deals marked as Lost since the first day of the current month.",
       "howCalculated": "How {label} is calculated"
+    },
+    "leadsSemCard": {
+      "title": "{count} repair conversation(s) without a card in this pipeline",
+      "hint": "The AI detected repair intent but no card exists — create one with a click, or ignore if not a lead.",
+      "createCard": "Create card",
+      "created": "Card created in the service pipeline.",
+      "createFailed": "Could not create the card"
     }
   },
   "Broadcasts": {
