@@ -341,7 +341,15 @@
       "confirmConvert": "Converter",
       "cancel": "Cancelar",
       "convertDone": "Negócio criado no outro funil e amarrado a este.",
-      "convertFailed": "Falha ao converter o negócio"
+      "convertFailed": "Falha ao converter o negócio",
+      "tagAdd": "Adicionar etiqueta",
+      "tagRemove": "Tirar esta etiqueta",
+      "tagDoRadar": "Esta etiqueta é do Radar — corrija a classificação no card lá em cima, assim a IA também aprende",
+      "tagAllApplied": "Todas as etiquetas da conta já estão neste contato. Crie uma nova abaixo.",
+      "tagNewPlaceholder": "Nova etiqueta…",
+      "tagCreate": "Criar",
+      "tagAddFailed": "Não consegui adicionar a etiqueta",
+      "tagRemoveFailed": "Não consegui tirar a etiqueta"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",

@@ -18,6 +18,7 @@ import {
   Wrench,
   ClipboardList,
   Sparkles,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -75,6 +76,9 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
   const [editingValue, setEditingValue] = useState<string | null>(null);
   const [valueDraft, setValueDraft] = useState("");
   const [convertendo, setConvertendo] = useState<string | null>(null);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [addingTag, setAddingTag] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
   const [motivoConversao, setMotivoConversao] = useState("virou_venda");
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
   const [newNote, setNewNote] = useState("");
@@ -86,7 +90,8 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     const supabase = createClient();
 
     // Fetch deals, notes, tags and OS events in parallel
-    const [dealsRes, notesRes, tagsRes, osRes, fieldsRes, stagesRes] = await Promise.all([
+    const [dealsRes, notesRes, tagsRes, osRes, fieldsRes, stagesRes, allTagsRes] =
+      await Promise.all([
       supabase
         .from("deals")
         .select("*, stage:pipeline_stages(*), pipeline:pipelines(tipo)")
@@ -117,6 +122,8 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
         .from("pipeline_stages")
         .select("id, name, position, pipeline_id")
         .order("position", { ascending: true }),
+      // Todas as etiquetas da conta — alimentam o seletor de adicionar.
+      supabase.from("tags").select("*").order("name"),
     ]);
 
     if (dealsRes.data) setDeals(dealsRes.data);
@@ -161,6 +168,7 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
           .sort((a, b) => a.name.localeCompare(b.name)),
       );
     }
+    if (allTagsRes.data) setAllTags(allTagsRes.data as Tag[]);
     if (tagsRes.data) {
       const mapped = tagsRes.data
         .filter((ct: Record<string, unknown>) => ct.tags)
@@ -226,6 +234,68 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
     },
     [tSidebar, fetchContactData],
   );
+
+  /** Etiquetas que o RADAR gerencia (temperatura/intenção): adicionar ou
+   * tirar à mão seria desfeito na próxima análise — o caminho certo é a
+   * correção no card do Radar, que também ensina a IA. Ficam fora do
+   * seletor manual. */
+  const RADAR_TAG_NAMES = new Set([
+    "quente", "morno", "frio",
+    "compra", "assistência", "orçamento", "informação", "pós-venda",
+  ]);
+
+  const addTagToContact = useCallback(
+    async (tagId: string) => {
+      if (!contact) return;
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("contact_tags")
+        .insert({ contact_id: contact.id, tag_id: tagId });
+      if (error) toast.error(tSidebar("tagAddFailed"));
+      void fetchContactData();
+    },
+    [contact, tSidebar, fetchContactData],
+  );
+
+  const removeTagFromContact = useCallback(
+    async (contactTagId: string) => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("contact_tags")
+        .delete()
+        .eq("id", contactTagId);
+      if (error) toast.error(tSidebar("tagRemoveFailed"));
+      void fetchContactData();
+    },
+    [tSidebar, fetchContactData],
+  );
+
+  const createAndAddTag = useCallback(async () => {
+    const name = newTagName.trim();
+    if (!name || !contact || !accountId) return;
+    setNewTagName("");
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    const CORES = ["#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ef4444", "#14b8a6"];
+    const { data: tag, error } = await supabase
+      .from("tags")
+      .insert({
+        user_id: session.user.id,
+        account_id: accountId,
+        name,
+        color: CORES[name.length % CORES.length],
+      })
+      .select("id")
+      .single();
+    if (error || !tag) {
+      toast.error(tSidebar("tagAddFailed"));
+      return;
+    }
+    await addTagToContact(tag.id);
+  }, [newTagName, contact, accountId, tSidebar, addTagToContact]);
 
   /** Abre o card no outro quadro, amarra os dois e fecha este com motivo. */
   const converterDeal = useCallback(
@@ -388,24 +458,98 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
               <TagIcon className="h-3 w-3" />
               {tSidebar("tags")}
             </div>
-            <div className="mt-2 flex flex-wrap gap-1">
-              {tags.length === 0 ? (
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {tags.length === 0 && !addingTag && (
                 <p className="px-1 text-xs text-muted-foreground">{tSidebar("noTags")}</p>
-              ) : (
-                tags.map((tag) => (
+              )}
+              {tags.map((tag) => {
+                const doRadar = RADAR_TAG_NAMES.has(tag.name);
+                return (
                   <span
                     key={tag.contact_tag_id}
-                    className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                    title={doRadar ? tSidebar("tagDoRadar") : undefined}
+                    className="group/tag inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
                     style={{
                       backgroundColor: `${tag.color}20`,
                       color: tag.color,
                     }}
                   >
                     {tag.name}
+                    {!doRadar && (
+                      <button
+                        type="button"
+                        onClick={() => void removeTagFromContact(tag.contact_tag_id)}
+                        title={tSidebar("tagRemove")}
+                        className="opacity-0 transition-opacity group-hover/tag:opacity-70 hover:!opacity-100"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    )}
                   </span>
-                ))
-              )}
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setAddingTag((v) => !v)}
+                title={tSidebar("tagAdd")}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
             </div>
+
+            {addingTag && (
+              <div className="mt-2 rounded-md bg-muted p-2">
+                {(() => {
+                  const aplicadas = new Set(tags.map((t) => t.id));
+                  const disponiveis = allTags.filter(
+                    (t) => !aplicadas.has(t.id) && !RADAR_TAG_NAMES.has(t.name),
+                  );
+                  return disponiveis.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {disponiveis.map((tag) => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => void addTagToContact(tag.id)}
+                          className="rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-75"
+                          style={{
+                            backgroundColor: `${tag.color}20`,
+                            color: tag.color,
+                          }}
+                        >
+                          + {tag.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {tSidebar("tagAllApplied")}
+                    </p>
+                  );
+                })()}
+                <div className="mt-2 flex items-center gap-1.5">
+                  <input
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void createAndAddTag();
+                      if (e.key === "Escape") setAddingTag(false);
+                    }}
+                    placeholder={tSidebar("tagNewPlaceholder")}
+                    className="h-6 flex-1 rounded border border-border bg-card px-2 text-[11px] text-foreground outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void createAndAddTag()}
+                    disabled={!newTagName.trim()}
+                    className="rounded bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground disabled:opacity-40"
+                  >
+                    {tSidebar("tagCreate")}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Divider */}

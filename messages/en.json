@@ -341,7 +341,15 @@
       "confirmConvert": "Convert",
       "cancel": "Cancel",
       "convertDone": "Deal created in the other pipeline and linked to this one.",
-      "convertFailed": "Failed to convert the deal"
+      "convertFailed": "Failed to convert the deal",
+      "tagAdd": "Add tag",
+      "tagRemove": "Remove this tag",
+      "tagDoRadar": "This tag belongs to the Radar — correct the classification in the card above so the AI also learns",
+      "tagAllApplied": "All account tags are already on this contact. Create a new one below.",
+      "tagNewPlaceholder": "New tag…",
+      "tagCreate": "Create",
+      "tagAddFailed": "Could not add the tag",
+      "tagRemoveFailed": "Could not remove the tag"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",

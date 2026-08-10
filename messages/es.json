@@ -341,7 +341,15 @@
       "confirmConvert": "Convertir",
       "cancel": "Cancelar",
       "convertDone": "Negocio creado en el otro embudo y vinculado a este.",
-      "convertFailed": "Error al convertir el negocio"
+      "convertFailed": "Error al convertir el negocio",
+      "tagAdd": "Añadir etiqueta",
+      "tagRemove": "Quitar esta etiqueta",
+      "tagDoRadar": "Esta etiqueta es del Radar — corrige la clasificación en la tarjeta de arriba para que la IA también aprenda",
+      "tagAllApplied": "Todas las etiquetas ya están en este contacto. Crea una nueva abajo.",
+      "tagNewPlaceholder": "Nueva etiqueta…",
+      "tagCreate": "Crear",
+      "tagAddFailed": "No se pudo añadir la etiqueta",
+      "tagRemoveFailed": "No se pudo quitar la etiqueta"
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está pausado aquí",
